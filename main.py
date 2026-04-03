@@ -47,6 +47,7 @@ posledny_zapis, posledny_prevod_ds, filename = 0, 0, ""
 roms = ds_sensor.scan() 
 ds_v = [0.0] * len(roms)
 st, sh = 0.0, 0.0
+novy_subor = True  # Pomocná premenná pre hlavičku
 
 # --- NOVÉ ČASOVANIE A GLOBÁLNE PREMENNÉ ---
 posledny_zapis_ms = time.ticks_ms()
@@ -152,26 +153,35 @@ while True:
     elif mode == "REC":
         if int(time.time()) % 2: oled.text("REC", 0, 0)
         
-        # Presné časovanie zápisu
-        ms_od_zapisu = time.ticks_diff(time.ticks_ms(), posledny_zapis_ms) if posledny_zapis_ms != 0 else (interval * 1000)
+        # Výpočet času od posledného zápisu
+        ms_teraz = time.ticks_ms()
+        # Ak je to prvý zápis v tomto cykle, nastavíme ms_od_zapisu tak, aby hneď zapísal
+        if posledny_zapis_ms == 0:
+            ms_od_zapisu = interval * 1000
+        else:
+            ms_od_zapisu = time.ticks_diff(ms_teraz, posledny_zapis_ms)
+            
         sek_do = max(0, interval - (ms_od_zapisu // 1000))
         oled.text("Ct: {}s".format(int(sek_do)), 0, 12)
         
         if ms_od_zapisu >= (interval * 1000):
-            # --- TERMINÁL (VRÁTENÝ SPÄŤ) ---
+            # --- TERMINÁL VÝPIS ---
             print("\n" + "="*50)
-            print("ZAPIS [{}] SHT:{:.1f}C {:.1f}% ADC:{}V {}V BIN:{}".format(cas_s, st, sh, v1, v2, bin_s))
-            for i, r in enumerate(roms):
-                addr = ubinascii.hexlify(r).decode()
-                print("  #{}: ID:[{}] -> {}C".format(i+1, addr, ds_v[i]))
+            print("ZAPIS [{}] SHT:{:.1f}C {:.1f}% ADC:{}V {}V".format(cas_s, st, sh, v1, v2))
             
             # --- ZÁPIS NA SD ---
             if sd_ready:
                 try:
+                    # Zisťujeme, či súbor existuje (ak nie, musíme zapísať hlavičku)
+                    try: uos.stat(filename); subor_existuje = True
+                    except: subor_existuje = False
+                    
                     with open(filename, "a") as f:
-                        if posledny_zapis_ms == 0:
+                        # Ak súbor neexistoval, zapíšeme hlavičku s ID senzormi
+                        if not subor_existuje:
                             ids = ",".join([ubinascii.hexlify(r).decode() for r in roms])
                             f.write("Cas,SHT_T,SHT_H,A1,A2,BIN,B1,B2,B3,B4,{}\n".format(ids))
+                            print("-> Vytvorena hlavicka s ID.")
                         
                         data_row = "{},{:.2f},{:.1f},{:.2f},{:.2f},{},{},{}\n".format(
                             cas_s, st, sh, v1, v2, bin_s, 
@@ -180,10 +190,11 @@ while True:
                         )
                         f.write(data_row)
                         f.flush()
-                        uos.sync() 
-                    print("-> Ulozene na SD.")
-                except:
-                    print("-> CHYBA SD KARTY!"); sd_ready = False
+                        uos.sync()
+                    print("-> Ulozene na SD: " + filename)
+                except Exception as e:
+                    print("-> CHYBA ZAPISU:", e)
+                    sd_ready = False
             
             LED_EXT.value(1); time.sleep_ms(50); LED_EXT.value(0)
             posledny_zapis_ms = time.ticks_ms()
