@@ -168,6 +168,8 @@ while True:
             # --- TERMINÁL VÝPIS ---
             print("\n" + "="*50)
             print("ZAPIS [{}] SHT:{:.1f}C {:.1f}% ADC:{}V {}V".format(cas_s, st, sh, v1, v2))
+            for i, r in enumerate(roms):
+                print("  DS #{}: [{}] -> {}C".format(i+1, ubinascii.hexlify(r).decode(), ds_v[i]))
             
             # --- ZÁPIS NA SD ---
             if sd_ready:
