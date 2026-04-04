@@ -1,4 +1,5 @@
-**Multi-Channel DataLogger (RPi Pico)**
+#**Multi-Channel DataLogger (RPi Pico)**
+
 Tento projekt predstavuje robustný amatérsky datalogger postavený na mikrokontroléri Raspberry Pi Pico. Zariadenie monitoruje teplotu, vlhkosť, analógové napätia, binárne vstupy a stav batérie.
 
 🚀 _**Kľúčové vlastnosti**_
