@@ -1,4 +1,4 @@
-Navrhovaná schéma zapojenia
+# **Navrhovaná schéma zapojenia**
 Pre správne spínanie P-MOSFETu pomocou 3,3V logiky Raspberry Pi Pico (keďže napätie batérie môže byť až 4,2V) je ideálne použiť kombináciu s malým N-MOSFETom. 
 Medium
 Medium
