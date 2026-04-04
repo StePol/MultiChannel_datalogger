@@ -1,37 +1,22 @@
 # **Navrhovaná schéma zapojenia**
 Pre správne spínanie P-MOSFETu pomocou 3,3V logiky Raspberry Pi Pico (keďže napätie batérie môže byť až 4,2V) je ideálne použiť kombináciu s malým N-MOSFETom. 
-Medium
-Medium
-P-MOSFET (napr. Si2301, BSS84):
-Source (S): K plusovému pólu batérie (VBAT).
-Drain (D): K hornému rezistoru napäťového deliča (
-).
-Gate (G): K Drainu N-MOSFETu a cez pull-up rezistor (
-
-) k batérii.
-N-MOSFET (napr. 2N7002, BSS138):
-Source (S): Na zem (GND).
-Gate (G): K GPIO pinu Pico (napr. GP15).
-Drain (D): K Gate P-MOSFETu.
-Napäťový delič:
-Zapojte 
- a 
- (napr. oba 
-
-) medzi Drain P-MOSFETu a GND.
-Stred deliča pripojte k ADC pinu Pico (napr. ADC0/GP26). 
-Medium
-Medium
- +3
+1. P-MOSFET (napr. Si2301, BSS84):
+  Source (S): K plusovému pólu batérie (VBAT).
+  Drain (D): K hornému rezistoru napäťového deliča (R1).
+  Gate (G): K Drainu N-MOSFETu a cez pull-up rezistor (100k) k batérii.
+2. N-MOSFET (napr. 2N7002, BSS138):
+  Source (S): Na zem (GND).
+  Gate (G): K GPIO pinu Pico (napr. GP15).
+  Drain (D): K Gate P-MOSFETu.
+3. Napäťový delič:
+  Zapojte R1 a R2 (napr. obidva 100k) medzi Drain P-MOSFETu a GND.
+  Stred deliča pripojte k ADC pinu Pico (napr. ADC0/GP26). 
 Princíp fungovania
-Vypnutý stav: GPIO pin je LOW. N-MOSFET je vypnutý, pull-up rezistor drží Gate P-MOSFETu na napätí batérie (
+  Vypnutý stav: GPIO pin je LOW. N-MOSFET je vypnutý, pull-up rezistor drží Gate P-MOSFETu na napätí batérie (Vgs=0V), takže P-MOSFET je zatvorený a cez delič netečie žiadny prúd.
+  Meranie: Nastavte GPIO na HIGH. N-MOSFET sa otvorí a stiahne Gate P-MOSFETu k zemi. P-MOSFET sa otvorí, delič sa pripojí k batérii a ADC môže odčítať hodnotu. 
 
-), takže P-MOSFET je zatvorený a cez delič netečie žiadny prúd.
-Meranie: Nastavte GPIO na HIGH. N-MOSFET sa otvorí a stiahne Gate P-MOSFETu k zemi. P-MOSFET sa otvorí, delič sa pripojí k batérii a ADC môže odčítať hodnotu. 
-Medium
-Medium
- +1
 Príklad kódu (MicroPython)
+,,,
 python
 from machine import Pin, ADC
 import time
@@ -50,23 +35,5 @@ def get_battery_voltage():
     
     ctrl_pin.value(0)        # Vypnúť delič (odstránenie parazitného odberu)
     return voltage
-
 print(f"Napätie batérie: {get_battery_voltage():.2f} V")
-Kód používajte opatrne.
-
-Upozornenie: Pri použití deliča 
-
-
-
- je výstupné napätie pri plnej batérii (
-
-
-) rovné 
-
-
-, čo je bezpečne pod limitom 
-
-
- pre ADC pin. 
-Adafruit Forums
-Adafruit Forums
+,,,
