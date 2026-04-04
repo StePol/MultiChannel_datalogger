@@ -16,7 +16,7 @@ Princíp fungovania
   Meranie: Nastavte GPIO na HIGH. N-MOSFET sa otvorí a stiahne Gate P-MOSFETu k zemi. P-MOSFET sa otvorí, delič sa pripojí k batérii a ADC môže odčítať hodnotu. 
 
 Príklad kódu (MicroPython)
-,,,
+```
 python
 from machine import Pin, ADC
 import time
@@ -36,4 +36,4 @@ def get_battery_voltage():
     ctrl_pin.value(0)        # Vypnúť delič (odstránenie parazitného odberu)
     return voltage
 print(f"Napätie batérie: {get_battery_voltage():.2f} V")
-,,,
+```
