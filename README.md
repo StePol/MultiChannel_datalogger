@@ -11,17 +11,18 @@ Používateľské rozhranie: 0.96" OLED displej a rotačný enkodér s obsluhou 
 Presný čas: Externý RTC DS3231 synchronizovaný s interným RTC procesora.
 
 ## 🛠 _**Hardvérová konfigurácia (Pinout)**_
-Komponent	Pin (GP)	Funkcia
-I2C0 (SDA/SCL)	8 / 9	OLED, RTC DS3231, SHT4x
-SPI0 (SCK/MOSI/MISO)	18/19/16	SD Karta
-SD Card CS	17	Chip Select pre SD
-OneWire (DS18B20)	22	Teplotné senzory
-Rotačný enkodér	12 (CLK), 13 (DT)	Ovládanie menu (IRQ)
-Tlačidlo enkodéra	15	Prepínanie režimov (Pauza/REC/Test)
-Binárne vstupy	2, 3, 4, 5	Digitálne vstupy (Pull-up)
-ADC Vstupy	26, 27	Analógové meranie
-Battery Monitor	28 (ADC), 21 (CTRL)	Meranie batérie cez tranzistory
-Stavová LED	14	Signalizácia zápisu a chýb
+| Komponent            | Pin (GP)            | Funkcia                             |
+|----------------------|---------------------|-------------------------------------|
+| I2C0 (SDA/SCL)       | 8 / 9               | OLED, RTC DS3231, SHT4x             |
+| SPI0 (SCK/MOSI/MISO) | 18/19/16            | SD Karta                            |
+| SD Card CS           | 17                  | Chip Select pre SD                  |
+| OneWire (DS18B20)    | 22                  | Teplotné senzory                    |
+| Rotačný enkodér      | 12 (CLK), 13 (DT)   | Ovládanie menu (IRQ)                |
+| Tlačidlo enkodéra    | 15                  | Prepínanie režimov (Pauza/REC/Test) |
+| Binárne vstupy       | 2, 3, 4, 5          | Digitálne vstupy (Pull-up)          |
+| ADC Vstupy           | 26, 27              | Analógové meranie                   |
+| Battery Monitor      | 28 (ADC), 21 (CTRL) | Meranie batérie cez tranzistory     |
+| Stavová LED          | 14                  | Signalizácia zápisu a chýb          |
 
 ## 📁 _**Štruktúra súborov**_
 main.py - Hlavná aplikačná logika a meracia slučka.
@@ -32,19 +33,19 @@ ds3231.py
 sht4x.py
 
 ⚙️ _**Prevádzkové režimy**_
-PAUZA (STOP): Zariadenie meria, ale neukladá. Enkodérom je možné nastaviť interval zápisu (v 5s krokoch).
-REC (ZÁPIS): Dáta sa ukladajú do CSV súboru s názvom podľa dátumu a času (YYYYMMDD_HHMMSS.csv).
-TEST: Špeciálny režim (aktivuje sa pri intervale 0s). Umožňuje listovať zoznamom pripojených OneWire senzorov a zobraziť ich unikátne ID a aktuálnu teplotu.
+- PAUZA (STOP): Zariadenie meria, ale neukladá. Enkodérom je možné nastaviť interval zápisu (v 5s krokoch).
+- REC (ZÁPIS): Dáta sa ukladajú do CSV súboru s názvom podľa dátumu a času (YYYYMMDD_HHMMSS.csv).
+- TEST: Špeciálny režim (aktivuje sa pri intervale 0s). Umožňuje listovať zoznamom pripojených OneWire senzorov a zobraziť ich unikátne ID a aktuálnu teplotu.
 
 ## 💾 _**Formát dát (CSV)**_
 Zariadenie pri každom novom meraní vytvorí hlavičku s ID všetkých pripojených senzorov:
 Cas, SHT_T, SHT_H, A1, A2, BIN, B1, B2, B3, B4, [ID_senzorov...]
 
 ## 🛡 _**Stabilita a bezpečnosť**_
-Prerušenia (IRQ): Enkodér je obsluhovaný mimo hlavnej slučky, čo zaručuje plynulé ovládanie aj počas zápisu na kartu.
-Robustný zápis: Po každom riadku sa vykonáva flush() a sync(), čo minimalizuje riziko straty dát.
-Garbage Collection: Automatické čistenie RAM pre dlhodobú stabilitu bez zamŕzania.
-Poznámka: Pre správnu funkciu merania batérie je potrebné mať osadený delič napätia so spínacím MOSFET tranzistorom na GP21, aby sa zabránilo vybíjaniu batérie počas nečinnosti.
+- Prerušenia (IRQ): Enkodér je obsluhovaný mimo hlavnej slučky, čo zaručuje plynulé ovládanie aj počas zápisu na kartu.
+- Robustný zápis: Po každom riadku sa vykonáva flush() a sync(), čo minimalizuje riziko straty dát.
+- Garbage Collection: Automatické čistenie RAM pre dlhodobú stabilitu bez zamŕzania.
+- Poznámka: Pre správnu funkciu merania batérie je potrebné mať osadený delič napätia so spínacím MOSFET tranzistorom na GP21, aby sa zabránilo vybíjaniu batérie počas nečinnosti.
 
 ## 🔌 _**Schéma zapojenia (Pinout)**_
 
@@ -81,12 +82,24 @@ RTC DS3231 (Hodiny reálneho času)\
 SHT4x (Senzor teploty/vlhkosti)\
 Poznámka: Nezabudni na 4.7kΩ pull-up odpory na SDA a SCL, ak ich moduly už neobsahujú.\
 ### **2. SD Karta (SPI0)**
-VCC: 3.3V\
-GND: Ground\
-CS: GP17\
-SCK: GP18\
-MOSI: GP19\
-MISO: GP16\
+MicroSD karta má štandardne 8 pinov (vývodov), ktoré sú umiestnené na prednej strane (zlaté kontakty). Popis vývodov sa mierne líši podľa toho, či karta komunikuje v natívnom SD režime (vysoká rýchlosť, 4-bit) alebo v SPI režime (jednoduchší, pomalší režim, používaný napr. s Arduino).
+
+| Pin | Názov   | Popis (SD Režim)        | Popis (SPI Režim)  | Pripojenie  |
+|-----|---------|-------------------------|--------------------|-------------|
+| 1   | DAT2    | Data Line 2             | Nepoužíva sa (NC)  |             |
+| 2   | CD/DAT3 | Card Detect / Data 3    | CS (Chip Select)   | CS: GP17    |
+| 3   | CMD     | Command / Response      | DI (Data In)       | MOSI: GP19  |
+| 4   | VDD     | Napájanie (2.7V - 3.6V) | Napájanie (3.3V)   | VCC: 3.3V   |
+| 5   | CLK     | Clock (hodiny)          | SCK (Serial Clock) | SCK: GP18   |
+| 6   | VSS     | Ground (zem)            | Ground (zem)       | GND: Ground |
+| 7   | DAT0    | Data Line 0             | DO (Data Out)      | MISO: GP16  |
+| 8   | DAT1    | Data Line 1             | Nepoužíva sa (NC)  |             |
+
+#### Dôležité informácie
+- Napájanie (VDD): MicroSD karty fungujú na napätí 3.3V. Pripojenie na 5V (napr. priamo z Arduino Uno) bez prevodníka úrovní kartu zničí.
+- Zem (VSS): Pin 6 slúži ako spoločné uzemnenie.
+- SPI komunikácia: Pri projektoch s mikrokontrolérmi sa najčastejšie využíva SPI režim (piny 2, 3, 4, 5, 6, 7).
+- Karty SDHC/SDXC: Hoci majú vyššiu kapacitu, fyzické rozloženie 8 pinov zostáva rovnaké.
 ### **3. OneWire (GP22)**
 DS18B20: Všetky senzory paralelne (Data na GP22, VCC na 3.3V, GND).
 Pull-up: Medzi GP22 a 3.3V musí byť odpor 4.7kΩ.
