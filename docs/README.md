@@ -9,7 +9,7 @@ This directory contains supplementary documentation for the MultiChannel Datalog
 | `datasheet/` | Datasheets for key components (sensors, ADCs, etc.) |
 
 ## Key Components (datasheets to be added)
-- Raspberry Pi
+- Raspberry Pi Pico 
   https://www.raspberrypi.com/documentation/microcontrollers/pico-series.html
 - Temperature sensor — DS18B20
 - Humidity & temperature sensor — SHT4X
