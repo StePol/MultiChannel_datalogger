@@ -49,7 +49,6 @@ Cas, SHT_T, SHT_H, A1, A2, BIN, B1, B2, B3, B4, [ID_senzorov...]
 
 ## 🔌 _**Schéma zapojenia (Pinout)**_
 
-## 🔌 Schéma zapojenia (Pinout)
 
 ```text
               Raspberry Pi Pico (Pinout)
