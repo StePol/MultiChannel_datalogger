@@ -8,9 +8,9 @@ This directory contains the electrical schematic for the MultiChannel Datalogger
 ## Contents
 | File | Description |
 |------|-------------|
-| `schematic.kicad_sch` | KiCad schematic source file |
-| `schematic.pdf` | Exported PDF for quick viewing |
-| `BOM.csv` | Bill of Materials — list of all components |
+| `MultiChannel_datalogger.kicad_sch` | KiCad schematic source file |
+| `MultiChannel_datalogger.pdf` | Exported PDF for quick viewing |
+| `MultiChannel_datalogger.csv` | Bill of Materials — list of all components |
 
 ## Measured Channels
 | Channel | Sensor type | Parameter |
