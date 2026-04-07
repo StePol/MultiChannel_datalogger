@@ -9,7 +9,8 @@ This directory contains supplementary documentation for the MultiChannel Datalog
 | `datasheet/` | Datasheets for key components (sensors, ADCs, etc.) |
 
 ## Key Components (datasheets to be added)
-- Raspberry Pi — GPIO reference
+- Raspberry Pi
+  https://www.raspberrypi.com/documentation/microcontrollers/pico-series.html
 - Temperature sensor — TBD
 - Humidity sensor — TBD
 - Voltage/current sensor — TBD
