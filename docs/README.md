@@ -6,6 +6,7 @@ This directory contains supplementary documentation for the MultiChannel Datalog
 | Directory | Description |
 |-----------|-------------|
 | `images/` | Photos and diagrams used in the main README |
+| `data/` | sample output data to SDcard |
 | `datasheet/` | Datasheets for key components (sensors, ADCs, etc.) |
 
 ## Key Components (datasheets to be added)
