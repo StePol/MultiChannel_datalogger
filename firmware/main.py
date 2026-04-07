@@ -20,13 +20,15 @@ rtc_ext = ds3231.DS3231(i2c)
 senzor_sht = sht4x.SHT4X(i2c)
 ds_sensor = ds18x20.DS18X20(onewire.OneWire(machine.Pin(22)))
 
-# --- SYNC A SD ---
+# --- SYNC RTC ---
 try:
     t = rtc_ext.get_time()
     machine.RTC().datetime((t[0], t[1], t[2], 0, t[3], t[4], t[5], 0))
 except: print("RTC Sync Fail")
-
+    
+# --- SD KARTA ---
 sd_ready = False
+
 def mount_sd():
     global sd_ready
     try:
@@ -34,24 +36,48 @@ def mount_sd():
         vfs = uos.VfsFat(sd_inst)
         uos.mount(vfs, "/sd"); sd_ready = True
         print("SD karta pripravena.")
-    except: sd_ready = False
+    except: 
+        sd_ready = False
+
+def check_sd():
+    global sd_ready
+    if sd_ready:
+        try:
+            # Pokus o listovanie root adresára — menej agresívne ako zápis
+            uos.listdir("/sd")
+        except:
+            try: uos.umount("/sd")
+            except: pass
+            sd_ready = False
+            print("SD karta vytiahnutá.")
+    else:
+        try:
+            sd_inst = sdcard.SDCard(spi, CS_SD)
+            vfs = uos.VfsFat(sd_inst)
+            uos.mount(vfs, "/sd")
+            sd_ready = True
+            print("SD karta pripravená.")
+        except:
+            sd_ready = False
 
 mount_sd()
 
 # --- PREMENNÉ ---
-mode = "PAUZA" 
+mode = "PAUZA"
 interval = 60
 test_index = 0
-last_btn, last_clk = 1, pin_clk.value()
-posledny_zapis, posledny_prevod_ds, filename = 0, 0, ""
-roms = ds_sensor.scan() 
+last_btn = 1
+posledny_prevod_ds = 0
+filename = ""
+roms = ds_sensor.scan()
 ds_v = [0.0] * len(roms)
 st, sh = 0.0, 0.0
-novy_subor = True  # Pomocná premenná pre hlavičku
 
 # --- NOVÉ ČASOVANIE A GLOBÁLNE PREMENNÉ ---
 posledny_zapis_ms = time.ticks_ms()
 loop_timer = time.ticks_ms()
+sd_check_timer = time.ticks_ms()
+SD_CHECK_INTERVAL = 5000  # ms
 
 # --- ENKODÉR CEZ PRERUŠENIA ---
 last_clk_state = pin_clk.value()
@@ -167,7 +193,8 @@ while True:
         if ms_od_zapisu >= (interval * 1000):
             # --- TERMINÁL VÝPIS ---
             print("\n" + "="*50)
-            print("ZAPIS [{}] SHT:{:.1f}C {:.1f}% ADC:{}V {}V".format(cas_s, st, sh, v1, v2))
+            print("ZAPIS [{}] SHT:{:.1f}C {:.1f}% ADC:{}V {}V BIN:{}".format(cas_s, st, sh, v1, v2, bin_s))
+            
             for i, r in enumerate(roms):
                 print("  DS #{}: [{}] -> {}C".format(i+1, ubinascii.hexlify(r).decode(), ds_v[i]))
             
