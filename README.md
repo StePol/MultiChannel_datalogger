@@ -1,4 +1,4 @@
-# Multi-Channel DataLogger (RPi Pico)
+  # Multi-Channel DataLogger (RPi Pico)
 
 Tento projekt predstavuje robustný amatérsky datalogger postavený na mikrokontroléri Raspberry Pi Pico. Zariadenie monitoruje teplotu, vlhkosť, analógové napätia, binárne vstupy a stav batérie.
 
@@ -38,8 +38,10 @@ sht4x.py
 - TEST: Špeciálny režim (aktivuje sa pri intervale 0s). Umožňuje listovať zoznamom pripojených OneWire senzorov a zobraziť ich unikátne ID a aktuálnu teplotu.
 
 ## 💾 _**Formát dát (CSV)**_
-Zariadenie pri každom novom meraní vytvorí hlavičku s ID všetkých pripojených senzorov:
+Zariadenie pri každom novom meraní vytvorí hlavičku s ID všetkých pripojených senzorov a s nazvom vytvorenym podla aktualneho datumu a casu. Do tohoto suboru sa zapisuje az do ukoncenia rezimu REC.                                         hlavicka:                                                                                                         
 Cas, SHT_T, SHT_H, A1, A2, BIN, B1, B2, B3, B4, [ID_senzorov...]
+
+priklad ulozenych dat je v subore docs/data/*.csv
 
 ## 🛡 _**Stabilita a bezpečnosť**_
 - Prerušenia (IRQ): Enkodér je obsluhovaný mimo hlavnej slučky, čo zaručuje plynulé ovládanie aj počas zápisu na kartu.
