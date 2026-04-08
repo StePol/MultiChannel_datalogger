@@ -34,8 +34,9 @@ sht4x.py
 
 ⚙️ _**Prevádzkové režimy**_
 - PAUZA (STOP): Zariadenie meria, ale neukladá. Enkodérom je možné nastaviť interval zápisu (v 5s krokoch).
-- REC (ZÁPIS): Dáta sa ukladajú do CSV súboru s názvom podľa dátumu a času (YYYYMMDD_HHMMSS.csv).
+- REC (ZÁPIS): Dáta sa ukladajú do CSV súboru s názvom podľa dátumu a času (YYYYMMDD_HHMMSS.csv). Zaroven sa stav senzorov prenasa aj na seriovu linku, dostupnu na mikroUSB porte./
 - TEST: Špeciálny režim (aktivuje sa pri intervale 0s). Umožňuje listovať zoznamom pripojených OneWire senzorov a zobraziť ich unikátne ID a aktuálnu teplotu.
+- SYNC RTC: rezim pre synchronizaciu aktualneho casu s pc.
 
 ## 💾 _**Formát dát (CSV)**_
 Zariadenie pri každom novom meraní vytvorí hlavičku s ID všetkých pripojených senzorov a s nazvom vytvorenym podla aktualneho datumu a casu. Do tohoto suboru sa zapisuje az do ukoncenia rezimu REC.                                         hlavicka:                                                                                                         
