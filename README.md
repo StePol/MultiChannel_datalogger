@@ -119,3 +119,7 @@ Pre nulovú spotrebu v nečinnosti je použitý spínaný delič:
 Enkodér: CLK (GP12), DT (GP13). Pridané 10nF kondenzátory proti GND na filtráciu zákmitov.\
 Tlačidlo: GP15 (spína proti GND, interný pull-up aktívny).\
 LED: GP14 cez 220Ω odpor proti GND.
+
+## 📄 Licencia
+
+Tento projekt je licencovaný pod [GNU GPL v3](LICENSE).
