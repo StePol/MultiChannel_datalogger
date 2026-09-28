@@ -1,0 +1,81 @@
+(footprint "18650_Boost_TypeC_Module"
+  (version 20211014)
+  (generator pcbnew)
+  (layer "F.Cu")
+  (descr "3.7V to 9V/5V 2A DC-DC Step Up Boost Module, 18650 Li-Ion Charge+Discharge, Type-C input. PCB 24x19mm.")
+  (tags "18650 boost step-up charger TypeC 5V 9V 2A battery module")
+  (attr through_hole)
+
+  (fp_text reference "U" (at 12 -11.5 0) (layer "F.SilkS")
+    (effects (font (size 1.27 1.27)))
+  )
+  (fp_text value "18650_Boost_TypeC_Module" (at 12 11.5 0) (layer "F.Fab")
+    (effects (font (size 1.27 1.27)))
+  )
+
+  ;; Module outline: 24 x 19 mm, centered at origin
+  (fp_rect (start -12 -9.5) (end 12 9.5)
+    (layer "F.Fab")
+    (stroke (width 0.1) (type solid))
+    (fill none)
+  )
+  (fp_rect (start -13 -10.5) (end 13 10.5)
+    (layer "F.CrtYd")
+    (stroke (width 0.05) (type solid))
+    (fill none)
+  )
+  (fp_rect (start -12 -9.5) (end 12 9.5)
+    (layer "F.SilkS")
+    (stroke (width 0.12) (type solid))
+    (fill none)
+  )
+
+  ;; Type-C connector on top-left edge indicator
+  (fp_text user "TYPE-C" (at -7 -8 0) (layer "F.SilkS")
+    (effects (font (size 0.6 0.6)))
+  )
+
+  ;; Pin labels
+  (fp_text user "B-" (at -7.5 7.5 0) (layer "F.SilkS")
+    (effects (font (size 0.7 0.7)))
+  )
+  (fp_text user "B+" (at -2.5 7.5 0) (layer "F.SilkS")
+    (effects (font (size 0.7 0.7)))
+  )
+  (fp_text user "-" (at 5 7.5 0) (layer "F.SilkS")
+    (effects (font (size 0.7 0.7)))
+  )
+  (fp_text user "+" (at 9.5 7.5 0) (layer "F.SilkS")
+    (effects (font (size 0.7 0.7)))
+  )
+
+  ;; --- Pads based on photo ---
+  ;; Bottom-left: B- (BAT-)  ~X=-7.5, Y=+7
+  (pad "4" thru_hole circle
+    (at -7.5 7)
+    (size 2.5 2.5)
+    (drill 1.2)
+    (layers "*.Cu" "*.Mask")
+  )
+  ;; Bottom-left-center: B+ (BAT+)  ~X=-2.5, Y=+7
+  (pad "3" thru_hole circle
+    (at -2.5 7)
+    (size 2.5 2.5)
+    (drill 1.2)
+    (layers "*.Cu" "*.Mask")
+  )
+  ;; Bottom-right: OUT-  ~X=+5, Y=+7
+  (pad "6" thru_hole circle
+    (at 5 7)
+    (size 2.5 2.5)
+    (drill 1.2)
+    (layers "*.Cu" "*.Mask")
+  )
+  ;; Bottom-right edge: OUT+  ~X=+10, Y=+7
+  (pad "5" thru_hole circle
+    (at 10 7)
+    (size 2.5 2.5)
+    (drill 1.2)
+    (layers "*.Cu" "*.Mask")
+  )
+)
