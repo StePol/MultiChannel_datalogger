@@ -424,7 +424,7 @@
     "subpart_id_separator": 0,
     "top_level_sheets": [
       {
-        "filename": "../Dokumenty/projekty/MultiChannel_datalogger/MultiChannel_datalogger/MultiChannel_datalogger.kicad_sch",
+        "filename": "MultiChannel_datalogger.kicad_sch",
         "name": "Východzí",
         "uuid": "2d805d8a-8bcb-4b88-b4d8-1ed3d5ce3af6"
       }
