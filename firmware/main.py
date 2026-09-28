@@ -161,7 +161,7 @@ while True:
     try: st, sh = senzor_sht.measurements()
     except: st, sh = -99.9, -99.9
 
-    Batt_ctrl_pin.value(1)        # Otvorí BS170 -> zopne BSS92
+    Batt_ctrl_pin.value(1)        # Otvorí BS170 -> zopne BSS84
     v1 = round((adc1.read_u16() * 3.3) / 65535, 2)
     v2 = round((adc2.read_u16() * 3.3) / 65535, 2)
     v_bat = round((adc_bat.read_u16() * 3.3) / 65535, 2) * 2
@@ -252,10 +252,10 @@ while True:
                         # Ak súbor neexistoval, zapíšeme hlavičku s ID senzormi
                         if not subor_existuje:
                             ids = ",".join([ubinascii.hexlify(r).decode() for r in roms])
-                            f.write("Cas,SHT_T,SHT_H,A1,A2,BIN,B1,B2,B3,B4,{}\n".format(ids))
+                            f.write("Cas,SHT_T,SHT_H,A1,A2,BAT,BIN,B1,B2,B3,B4,{}\n".format(ids))
                             print("-> Vytvorena hlavicka s ID.")
-                        data_row = "{},{:.2f},{:.1f},{:.2f},{:.2f},{},{},{}\n".format(
-                            cas_s, st, sh, v1, v2, bin_s,
+                        data_row = "{},{:.2f},{:.1f},{:.2f},{:.2f},{:.2f},{},{},{}\n".format(
+                            cas_s, st, sh, v1, v2, v_bat, bin_s,
                             ",".join([c for c in bin_s]),
                             ",".join(map(str, ds_v))
                         )
