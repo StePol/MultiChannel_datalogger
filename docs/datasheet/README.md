@@ -16,8 +16,7 @@ development of the Multi-Channel DataLogger.
 | File | Description |
 |---|---|
 | `MeranieNapatiaLiIonBaterie.md` | Project notes for Li-ion battery voltage measurement |
-| `BSS92.pdf` | MOSFET datasheet retained as a development reference |
-| `2N7000_BS170.PDF` | 2N7000 / BS170 MOSFET datasheet retained as a development reference |
+| `2N7000_BS170.PDF` | Vishay Siliconix datasheet covering the BS170 N-channel MOSFET used as Q2 |
 
 The battery measurement circuit is still under development. Files in this
 section are retained as design references and should not be interpreted as the
