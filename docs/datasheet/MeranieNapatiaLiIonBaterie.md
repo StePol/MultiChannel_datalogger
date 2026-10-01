@@ -1,39 +1,67 @@
-# **Navrhovaná schéma zapojenia**
-Pre správne spínanie P-MOSFETu pomocou 3,3V logiky Raspberry Pi Pico (keďže napätie batérie môže byť až 4,2V) je ideálne použiť kombináciu s malým N-MOSFETom. 
-1. P-MOSFET (napr. Si2301, BSS84):
-  Source (S): K plusovému pólu batérie (VBAT).
-  Drain (D): K hornému rezistoru napäťového deliča (R1).
-  Gate (G): K Drainu N-MOSFETu a cez pull-up rezistor (100k) k batérii.
-2. N-MOSFET (napr. 2N7002, BSS138):
-  Source (S): Na zem (GND).
-  Gate (G): K GPIO pinu Pico (napr. GP15).
-  Drain (D): K Gate P-MOSFETu.
-3. Napäťový delič:
-  Zapojte R1 a R2 (napr. obidva 100k) medzi Drain P-MOSFETu a GND.
-  Stred deliča pripojte k ADC pinu Pico (napr. ADC0/GP26). 
-Princíp fungovania
-  Vypnutý stav: GPIO pin je LOW. N-MOSFET je vypnutý, pull-up rezistor drží Gate P-MOSFETu na napätí batérie (Vgs=0V), takže P-MOSFET je zatvorený a cez delič netečie žiadny prúd.
-  Meranie: Nastavte GPIO na HIGH. N-MOSFET sa otvorí a stiahne Gate P-MOSFETu k zemi. P-MOSFET sa otvorí, delič sa pripojí k batérii a ADC môže odčítať hodnotu. 
+# Meranie napätia Li-ion batérie
 
-Príklad kódu (MicroPython)
+> **Stav:** Rozpracované. Zapojenie aj firmware pre meranie batérie sa môžu
+> ešte zmeniť.
+
+Aktuálny návrh používa spínaný napäťový delič, aby nebol delič trvalo
+pripojený k batérii.
+
+## Aktuálne komponenty
+
+Podľa aktuálnej KiCad schémy sú použité:
+
+- **Q1 — BSS84** — P-MOSFET
+- **Q2 — BS170** — N-MOSFET
+- **R3 — 10 kΩ** — spodný rezistor napäťového deliča
+- **R4 — 10 kΩ** — horný rezistor napäťového deliča
+- **R5 — 1 kΩ** — sériový rezistor gate Q2
+- **R6 — 10 kΩ** — pull-down gate Q2
+- **R7 — 10 kΩ** — pull-up gate Q1
+- **GP21** — riadenie meracieho obvodu
+- **GP28 / ADC2** — meranie napätia batérie
+
+## Princíp zapojenia
+
+P-MOSFET BSS84 pripája napäťový delič k batérii iba počas merania.
+Jeho gate je ovládaný pomocou N-MOSFETu BS170.
+
+### Vypnutý stav
+
+GP21 je v stave LOW. BS170 je vypnutý a gate BSS84 je držaný na úrovni
+napätia batérie. BSS84 je zatvorený a napäťový delič nie je aktívny.
+
+### Meranie
+
+GP21 sa nastaví na HIGH. BS170 sa otvorí a stiahne gate BSS84 smerom
+k GND. BSS84 sa otvorí a pripojí napäťový delič k batérii.
+
+Napätie zo stredu deliča sa následne meria pomocou ADC na GP28.
+R4 a R3 majú hodnotu 10 kΩ a vytvárajú napäťový delič s pomerom 1:1.
+Napätie na ADC je preto približne polovica napätia batérie. Pri napätí
+batérie 4,2 V je na ADC približne 2,1 V.
+
+## Aktuálna implementácia vo firmware
+
+Aktuálny firmware používa tento princíp:
+
+```python
+Batt_ctrl_pin.value(1)
+v_bat = round((adc_bat.read_u16() * 3.3) / 65535, 2) * 2
+Batt_ctrl_pin.value(0)
 ```
-python
-from machine import Pin, ADC
-import time
 
-# Konfigurácia pinov
-ctrl_pin = Pin(15, Pin.OUT)  # Ovládanie MOSFETov
-adc = ADC(Pin(26))           # Meranie napätia
+Výpočet momentálne predpokladá napäťový delič s pomerom 1:1.
 
-def get_battery_voltage():
-    ctrl_pin.value(1)        # Zapnúť delič
-    time.sleep_ms(10)        # Stabilizácia napätia
-    
-    # Prepočet: ADC(0-65535) -> 0-3.3V, delič 1:1 -> 0-6.6V
-    raw = adc.read_u16()
-    voltage = (raw / 65535) * 3.3 * 2
-    
-    ctrl_pin.value(0)        # Vypnúť delič (odstránenie parazitného odberu)
-    return voltage
-print(f"Napätie batérie: {get_battery_voltage():.2f} V")
-```
+## Ďalší vývoj
+
+Pred finálnou verziou je potrebné overiť najmä:
+
+- hodnoty rezistorov napäťového deliča
+- presnosť merania ADC
+- stabilizačný čas po zapnutí meracieho obvodu
+- skutočný odber vo vypnutom stave
+- kalibráciu meraného napätia
+- správanie obvodu v celom rozsahu napätia Li-ion článku
+
+Autoritatívnym zdrojom aktuálneho elektrického zapojenia je KiCad schéma v
+[`../../hardware/schematic/`](../../hardware/schematic/).
