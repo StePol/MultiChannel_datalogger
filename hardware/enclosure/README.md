@@ -1,25 +1,40 @@
 # Enclosure
 
-This directory contains the 3D printed enclosure design for the MultiChannel Datalogger.
+This directory is reserved for the mechanical design of the
+Multi-Channel DataLogger enclosure.
 
-## Tools
-- Designed in **FreeCAD** (open-source) or **Fusion 360**
-- Sliced with **PrusaSlicer** / **Cura**
+## Status
 
-## Contents
-| Directory | Description |
-|-----------|-------------|
-| `cad/` | Source CAD files (`.step`, `.f3d`, `.FCStd`) |
-| `stl/` | STL files ready for 3D printing |
-| `renders/` | Visual renders and photos |
+The enclosure has not been designed yet.
 
-## Print Settings
-| Parameter | Value |
-|-----------|-------|
-| Material | PLA / PETG |
-| Layer height | 0.2 mm |
-| Infill | 20 % |
-| Supports | TBD |
+Mechanical dimensions, connector locations, display and control placement,
+mounting points, and manufacturing method will be defined after the hardware
+layout is sufficiently finalized.
 
-## Assembly Notes
-> To be filled in once design is finalized.
+## Planned Contents
+
+The directory may later contain:
+
+- source CAD files
+- STEP or other exchange-format models
+- STL files for 3D printing
+- drawings with mechanical dimensions
+- assembly documentation
+- renders or photographs of the completed enclosure
+
+## Design Considerations
+
+The enclosure design should take into account:
+
+- Raspberry Pi Pico and main PCB dimensions
+- OLED display visibility
+- rotary encoder and push-button access
+- microSD card access
+- sensor and measurement connectors
+- USB access
+- battery placement
+- ventilation where required
+- mounting and service access
+
+Specific CAD software, manufacturing technology, materials, and print settings
+will be selected when the enclosure design begins.
