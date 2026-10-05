@@ -22,6 +22,7 @@ Do not open only the `.kicad_sch` file when working on the complete project.
 | `MultiChannel_datalogger.kicad_pcb` | PCB design |
 | `MultiChannel_datalogger.pdf` | PDF export of the schematic |
 | `MultiChannel_datalogger.csv` | Component/BOM export |
+| `ADS1256_J3.md` | Tested ADS1256 24-bit ADC connection via J3 |
 | `sym-lib-table` | Project symbol library configuration |
 | `fp-lib-table` | Project footprint library configuration |
 | `libraries/` | Project-specific symbols and footprints |
