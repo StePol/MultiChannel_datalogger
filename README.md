@@ -13,6 +13,19 @@ Tento projekt predstavuje robustný amatérsky datalogger postavený na mikrokon
 - **Používateľské rozhranie:** SSD1306 OLED displej a rotačný enkodér s tlačidlom.
 - **Presný čas:** externý RTC DS3231 synchronizovaný s interným RTC Raspberry Pi Pico.
 
+## ADS1256 – ručný výber vstupov
+
+V `firmware/main.py` nastavte `ADS1256_ENABLED = True` pre osem kanálov
+AN0–AN7, alebo `False` pre pôvodné dva analógové a štyri digitálne vstupy.
+Zmena sa uplatní po reštarte. Predvolene je ADS1256 zapnutý. Oba režimy
+používajú spoločné GPIO; zapojenie J3 musí zodpovedať zvolenému režimu.
+
+Na Pico skopírujte aj nové súbory `ads1256.py` a `logger_csv.py`.
+Podrobný postup a oba CSV formáty sú vo
+[`firmware/README.md`](firmware/README.md). Nižšie uvedená tabuľka GPIO
+a pôvodná CSV hlavička opisujú režim `ADS1256_ENABLED = False`.
+Integrovaný FW ešte vyžaduje skúšku na Pico.
+
 ## 🛠 Hardvérová konfigurácia
 | Komponent            | Pin (GP)            | Funkcia                             |
 |----------------------|---------------------|-------------------------------------|
