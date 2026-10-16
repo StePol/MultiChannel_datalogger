@@ -1,7 +1,7 @@
 import machine, onewire, ds18x20, sdcard, uos, ssd1306, time, ds3231, sht4x, ubinascii, gc
 
 # --- KONFIGURÁCIA ---
-# Ručný SW prepínač: zmena sa uplatní po reštarte Pico.
+# Predvolený stav po štarte; počas prevádzky sa mení cez menu ADS1256.
 # True = ADS1256 AN0–AN7; False = pôvodné A1/A2 a B1–B4.
 ADS1256_ENABLED = True
 ADS1256_VREF = 2.503  # Skutočne nameraná referencia modulu [V]
@@ -13,21 +13,42 @@ CS_SD = machine.Pin(17)
 ads = None
 ads_error = ""
 ads_values = None
-if ADS1256_ENABLED:
-    from ads1256 import ADS1256
-    try:
-        ads = ADS1256(vref=ADS1256_VREF)
-        print("Vstupy: ADS1256 AN0-AN7, VREF={} V, PGA=1, 100 SPS, SELFCAL OK".format(ADS1256_VREF))
-    except Exception as e:
-        ads_error = str(e)
-        print("ADS1256 INIT CHYBA:", e)
-    # Pri chybe neprepíname GPIO späť na pôvodné vstupy.
-    bin_vstupy = []
+bin_vstupy = []
+adc1 = adc2 = None
+
+
+def set_input_mode(enabled):
+    """Volá iba hlavná slučka pri vypnutom logovaní, nikdy IRQ."""
+    global ADS1256_ENABLED, ads, ads_values, ads_error
+    global bin_vstupy, adc1, adc2, ads_scan_timer
+    # Ukončíme prístup ADC a uvoľníme spoločné GPIO pred novou konfiguráciou.
+    if ads is not None:
+        ads.cs.value(1)
+    ads = None
     adc1 = adc2 = None
-else:
-    bin_vstupy = [machine.Pin(p, machine.Pin.IN, machine.Pin.PULL_UP) for p in (2, 3, 4, 5)]
-    adc1, adc2 = machine.ADC(26), machine.ADC(27)
-    print("Vstupy: povodne A1/A2 a B1-B4")
+    bin_vstupy = []
+    for gpio in (2, 3, 4, 5, 26, 27):
+        machine.Pin(gpio, machine.Pin.IN)
+    ads_values = None
+    ads_error = ""
+    ADS1256_ENABLED = enabled
+    if enabled:
+        try:
+            from ads1256 import ADS1256
+            ads = ADS1256(vref=ADS1256_VREF)
+            print("Vstupy: ADS1256 AN0-AN7, VREF={} V, PGA=1, 100 SPS, SELFCAL OK".format(ADS1256_VREF))
+        except Exception as e:
+            ads_error = str(e)
+            print("ADS1256 INIT CHYBA:", e)
+        # Pri chybe ponecháme zvolený režim; On v menu zopakuje inicializáciu.
+    else:
+        bin_vstupy = [machine.Pin(p, machine.Pin.IN, machine.Pin.PULL_UP) for p in (2, 3, 4, 5)]
+        adc1, adc2 = machine.ADC(26), machine.ADC(27)
+        print("Vstupy: povodne A1/A2 a B1-B4")
+    ads_scan_timer = time.ticks_add(time.ticks_ms(), -ADS1256_SCAN_MS)
+
+
+set_input_mode(ADS1256_ENABLED)
 pin_clk = machine.Pin(12, machine.Pin.IN, machine.Pin.PULL_UP)
 pin_dt = machine.Pin(13, machine.Pin.IN, machine.Pin.PULL_UP)
 adc_bat = machine.ADC(28)
@@ -85,11 +106,26 @@ def check_sd():
 
 mount_sd()
 
+def new_recording_filename(timestamp):
+    # Aj dve spustenia v rovnakej sekunde musia mať oddelené CSV schémy.
+    base = "/sd/{:04d}{:02d}{:02d}_{:02d}{:02d}{:02d}".format(*timestamp)
+    candidate = base + ".csv"
+    suffix = 0
+    while True:
+        try:
+            uos.stat(candidate)
+        except OSError:
+            return candidate
+        suffix += 1
+        candidate = base + "_{}.csv".format(suffix)
+
+
 # --- PREMENNÉ ---
 mode = "PAUZA"
-# interval: -1 = SyncRTC, 0 = TEST, 5-300 = interval zápisu v sekundách
+# interval: -2 = ADS1256, -1 = SyncRTC, 0 = TEST, 5-300 = zápis [s]
 interval = 60
 test_index = 0
+ads_menu_choice = ADS1256_ENABLED
 last_btn = 1
 posledny_prevod_ds = 0
 filename = ""
@@ -105,7 +141,7 @@ SD_CHECK_INTERVAL = 5000  # Kontrola SD karty každých 5 sekúnd
 last_clk_state = pin_clk.value()
 
 def encoder_handler(pin):
-    global interval, test_index, mode, last_clk_state
+    global interval, test_index, mode, last_clk_state, ads_menu_choice
 
     current_clk_state = pin_clk.value()
     # Vyhodnotíme len pri zmene stavu CLK
@@ -116,15 +152,21 @@ def encoder_handler(pin):
         direction = 1 if dt_state != current_clk_state else -1
 
         if mode == "PAUZA":
-            # Menu: SyncRTC (-1) -> TEST (0) -> 5s -> 10s -> ... -> 300s
+            # Menu: ADS1256 (-2) -> SyncRTC (-1) -> TEST (0) -> 5s ... 300s
             if direction == -1:
                 if interval > 5:    interval -= 5
                 elif interval == 5: interval = 0    # 5s -> TEST
                 elif interval == 0: interval = -1   # TEST -> SyncRTC
+                elif interval == -1: interval = -2  # SyncRTC -> ADS1256
             else:
-                if interval == -1:   interval = 0   # SyncRTC -> TEST
+                if interval == -2:   interval = -1  # ADS1256 -> SyncRTC
+                elif interval == -1: interval = 0   # SyncRTC -> TEST
                 elif interval == 0:  interval = 5   # TEST -> 5s
                 elif interval < 300: interval += 5
+
+        elif mode == "ADC_MENU":
+            # Otáčanie iba vyberá; stlačenie potvrdí v hlavnej slučke.
+            ads_menu_choice = direction > 0
 
         elif mode == "TEST" and roms:
             # Prepínanie senzorov v TEST móde
@@ -167,7 +209,10 @@ while True:
         if mode == "PAUZA":
             roms = ds_sensor.scan()
             ds_v = [0.0] * len(roms)
-            if interval == -1:
+            if interval == -2:
+                ads_menu_choice = ADS1256_ENABLED
+                mode = "ADC_MENU"
+            elif interval == -1:
                 # Prechod do SYNC módu
                 mode = "SYNC"
             elif interval == 0:
@@ -177,7 +222,12 @@ while True:
                 # Prechod do REC módu — vytvorí nový súbor s časovou pečiatkou
                 mode = "REC"
                 posledny_zapis_ms = time.ticks_ms()
-                filename = "/sd/{:04d}{:02d}{:02d}_{:02d}{:02d}{:02d}.csv".format(*lt)
+                filename = new_recording_filename(lt)
+        elif mode == "ADC_MENU":
+            # Zablokuje zmenu výberu enkodérom počas inicializácie GPIO.
+            mode = "ADC_SWITCH"
+            set_input_mode(ads_menu_choice)
+            mode = "PAUZA"
         else:
             mode = "PAUZA"
         LED_EXT.value(1); time.sleep_ms(100); LED_EXT.value(0)
@@ -221,10 +271,18 @@ while True:
     if mode == "PAUZA":
         oled.text("STOP", 0, 0)
         # Zobrazenie aktuálne zvolenej položky menu
-        if interval == -1:  label = "SyncRTC"
+        if interval == -2:  label = "ADS1256"
+        elif interval == -1: label = "SyncRTC"
         elif interval == 0: label = "TEST"
         else:               label = "{}s".format(interval)
         oled.text("Int: {}".format(label), 0, 12)
+
+    elif mode == "ADC_MENU":
+        oled.text("ADS1256", 0, 0)
+        oled.text(("> " if ads_menu_choice else "  ") + "On", 0, 16)
+        oled.text(("  " if ads_menu_choice else "> ") + "Off", 0, 28)
+        oled.text("Stlac = potvrdit", 0, 42)
+        oled.text("Stav: " + ("On" if ADS1256_ENABLED else "Off"), 0, 54)
 
     elif mode == "SYNC":
         # Synchronizácia RTC podľa interných hodín Pico (nastavených Thonny pri spustení)
@@ -311,7 +369,7 @@ while True:
             posledny_zapis_ms = time.ticks_ms()
 
     # 6. SPODNÝ RIADOK DISPLEJA — merania (nie v TEST a SYNC móde)
-    if mode not in ("TEST", "SYNC"):
+    if mode not in ("TEST", "SYNC", "ADC_MENU"):
         oled.text("SHT: {:.1f}C {:.0f}%".format(st, sh), 0, 24)
         if ADS1256_ENABLED:
             if ads_values is None:

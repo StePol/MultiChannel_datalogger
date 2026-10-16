@@ -13,17 +13,19 @@ Tento projekt predstavuje robustný amatérsky datalogger postavený na mikrokon
 - **Používateľské rozhranie:** SSD1306 OLED displej a rotačný enkodér s tlačidlom.
 - **Presný čas:** externý RTC DS3231 synchronizovaný s interným RTC Raspberry Pi Pico.
 
-## ADS1256 – ručný výber vstupov
+## ADS1256 – výber vstupov enkodérom
 
-V `firmware/main.py` nastavte `ADS1256_ENABLED = True` pre osem kanálov
-AN0–AN7, alebo `False` pre pôvodné dva analógové a štyri digitálne vstupy.
-Zmena sa uplatní po reštarte. Predvolene je ADS1256 zapnutý. Oba režimy
-používajú spoločné GPIO; zapojenie J3 musí zodpovedať zvolenému režimu.
+Pri vypnutom logovaní (PAUZA) vyberte položku **ADS1256** vedľa SyncRTC
+a TEST. Stlačením otvorte podmenu, otočením vyberte **On/Off** a ďalším
+stlačením potvrďte. **On** zapne čítanie AN0–AN7, **Off** obnoví pôvodné
+dva analógové a štyri digitálne vstupy. Zmena platí ihneď bez reštartu;
+počas REC nie je dostupná. Po reštarte sa obnoví predvolený stav On.
+Oba režimy používajú spoločné GPIO; zapojenie J3 musí zodpovedať režimu.
 
-Na Pico skopírujte aj nové súbory `ads1256.py` a `logger_csv.py`.
-Podrobný postup a oba CSV formáty sú vo
+Cez Thonny nahrajte aktualizovaný `main.py` a súbory `ads1256.py`,
+`logger_csv.py`. Ovládanie a oba CSV formáty sú vo
 [`firmware/README.md`](firmware/README.md). Nižšie uvedená tabuľka GPIO
-a pôvodná CSV hlavička opisujú režim `ADS1256_ENABLED = False`.
+a pôvodná CSV hlavička opisujú režim ADS1256 Off.
 Integrovaný FW ešte vyžaduje skúšku na Pico.
 
 ## 🛠 Hardvérová konfigurácia

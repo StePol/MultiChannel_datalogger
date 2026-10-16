@@ -28,23 +28,29 @@ This directory contains the software running on the Raspberry Pi Pico (RP2040).
 - Open `main.py` in Thonny and click **Run**
 - `main.py` is executed automatically on power-up
 
-## Manual input-mode switch
+## ADS1256 input-mode menu
 
-Set the constant at the start of `main.py`, then restart the Pico:
+With logging stopped (**PAUZA**), turn the encoder to **ADS1256**, alongside
+**SyncRTC** and **TEST**, then press the encoder button to open its submenu.
+Turn toward **On** or **Off** and press again to confirm and return to PAUZA:
 
-```python
-ADS1256_ENABLED = True   # ADS1256 AN0–AN7 instead of A1/A2 and B1–B4
-# ADS1256_ENABLED = False  # original two analog and four digital inputs
-ADS1256_VREF = 2.503     # measured reference voltage of the tested module
-```
+- **On** initializes and calibrates ADS1256 and selects AN0–AN7.
+- **Off** selects the original A1/A2 and B1–B4 inputs.
 
-The default is ADS1256 enabled. This is a source-code setting, not an
-encoder menu item. Copy `ads1256.py` and `logger_csv.py` along with `main.py`
-and the existing drivers to the Pico.
+Rotation only changes the highlighted choice; confirmation applies it.
+The menu cannot be entered during REC. Stop recording first. Switching
+happens immediately without restarting. A new recording uses the CSV layout
+for the selected input mode. The selection is kept in RAM; after restarting,
+`ADS1256_ENABLED = True` in `main.py` supplies the default (On).
+`ADS1256_VREF = 2.503` remains the measured reference setting.
+
+Copy `ads1256.py` and `logger_csv.py` along with `main.py` and the existing
+drivers to the Pico. Thonny is the development and upload environment.
 
 The input configurations are mutually exclusive: GP2–GP5 and GP26/GP27
-are initialized only for the selected mode. Connect J3 for that mode before
-power-up; disconnect the ADS1256 module when using the original inputs.
+are initialized only for the selected mode. The software selection does not change external wiring or remove module
+power. Use the original inputs only with the corresponding J3 wiring;
+disconnect the ADS1256 before connecting original input signals.
 Battery measurement on GP28/GP21, SHT4x, DS18B20, RTC and SD logging remain
 available in both modes.
 
@@ -62,9 +68,9 @@ the ADC's 100 SPS setting is not the rate of complete eight-channel scans.
 The OLED rotates through channel pairs every two seconds. CSV stores the
 latest complete scan with six decimal places in volts. On a read failure,
 all eight values are invalidated, the OLED shows `ADS1256 CHYBA`, and CSV
-contains eight empty cells. Subsequent scans retry. Startup initialization
-failure requires checking the module and restarting the Pico; the firmware
-does not fall back to the conflicting original GPIO assignments.
+contains eight empty cells. Subsequent scans retry. Initialization failure requires checking the module and confirming **On**
+again to retry; the firmware does not fall back to the conflicting original
+GPIO assignments.
 
 ## Verification in Thonny
 
@@ -73,16 +79,18 @@ does not fall back to the conflicting original GPIO assignments.
 3. Upload `ads1256.py`, `logger_csv.py` and the updated `main.py` to the
    root of **Raspberry Pi Pico** in Thonny's Files pane. Keep the existing
    peripheral drivers on the Pico.
-4. Set `ADS1256_ENABLED = True` and `ADS1256_VREF = 2.503` in the Pico's
-   `main.py`, save it there and restart the board.
-5. In Shell, check the startup message confirming AN0–AN7 and SELFCAL OK.
-   Confirm that the OLED rotates through all eight input values.
-6. Select a 5-second recording interval. Check the Shell values and the
-   new CSV file: columns AN0–AN7 must be present and the old A1/A2/BIN
-   columns absent. Check that battery and temperature readings remain.
-7. To test the original mode, stop and power off the Pico, disconnect the
-   ADS1256 and restore the original J3 inputs. Set the switch to `False`,
-   save and restart. Check that the original CSV columns return.
+4. Restart the board. In Shell, check the startup message confirming
+   AN0–AN7 and SELFCAL OK (the default mode is On).
+5. In PAUZA, rotate to ADS1256, press, select Off, and press to confirm.
+   Open the submenu again, select On and confirm. Check Shell for successful
+   initialization and confirm that the OLED rotates through channel pairs.
+6. Select a 5-second recording interval. Check Shell and the new CSV file:
+   AN0–AN7 must be present and A1/A2/BIN absent. Battery and temperature
+   readings must remain. While REC is active, rotation must not open the
+   input-mode menu; pressing the button stops recording.
+7. With suitable original-input wiring, repeat a recording with Off selected
+   and verify that the original CSV columns return. Each mode change must
+   happen while recording is stopped.
 
 ## Measured Parameters
 - SHT4x temperature and relative humidity
@@ -107,20 +115,20 @@ The logger is controlled using the rotary encoder and its push button.
 - **TEST** — displays connected DS18B20 sensors, their ROM IDs and temperatures.
 - **SYNC** — synchronizes the external DS3231 RTC with the current internal RTC time.
 
-While in PAUZA mode, the rotary encoder selects `SyncRTC`, `TEST`, or a
-logging interval from 5 to 300 seconds in 5-second steps.
+While in PAUZA mode, the rotary encoder selects `ADS1256`, `SyncRTC`,
+`TEST`, or a logging interval from 5 to 300 seconds in 5-second steps.
 
 ## CSV Format
 
 Each recording creates a new timestamped CSV file.
 
-With `ADS1256_ENABLED = False`, the fixed columns are:
+With ADS1256 **Off**, the fixed columns are:
 
 ```text
 Cas,SHT_T,SHT_H,A1,A2,BAT,BIN,B1,B2,B3,B4
 ```
 
-With `ADS1256_ENABLED = True`, they are:
+With ADS1256 **On**, they are:
 
 ```text
 Cas,SHT_T,SHT_H,AN0,AN1,AN2,AN3,AN4,AN5,AN6,AN7,BAT
@@ -135,7 +143,7 @@ An example recording is available in `../docs/data/`.
 
 | File | Description |
 |---|---|
-| `main.py` | Main application, manual input switch and measurement loop |
+| `main.py` | Main application, encoder input-mode menu and measurement loop |
 | `ads1256.py` | J3 ADS1256 driver, eight single-ended inputs |
 | `logger_csv.py` | CSV header and row formatting for both input modes |
 | `ds3231.py` | DS3231 RTC driver |
