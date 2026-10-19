@@ -38,6 +38,9 @@ Turn toward **On** or **Off** and press again to confirm and return to PAUZA:
 - **Off** selects the original A1/A2 and B1–B4 inputs.
 
 Rotation only changes the highlighted choice; confirmation applies it.
+The `>` cursor marks the encoder selection; `[AKT]` marks the currently
+active On/Off mode, even when the cursor points elsewhere. Both ADS1256
+submenus hide the clock so their titles remain fully readable.
 The menu cannot be entered during REC. Stop recording first. Switching
 happens immediately without restarting. A new recording uses the CSV layout
 for the selected input mode. The selection is kept in RAM; after restarting,

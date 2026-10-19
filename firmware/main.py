@@ -301,7 +301,9 @@ while True:
 
     # 5. DISPLEJ A LOGIKA ZÁPISU
     oled.fill(0)
-    oled.text(cas_s, 64, 0)
+    # Podmenu má vlastný nadpis cez celý riadok; čas patrí na hlavné obrazovky.
+    if mode not in ("ADC_MENU", "ADC_SAMPLES"):
+        oled.text(cas_s, 64, 0)
 
     if mode == "PAUZA":
         oled.text("STOP", 0, 0)
@@ -315,7 +317,10 @@ while True:
     elif mode == "ADC_MENU":
         oled.text("ADS1256 " + ("On" if ADS1256_ENABLED else "Off"), 0, 0)
         for index, label in enumerate(("On", "Off", "Vzorky: {}".format(ads_samples), "Spat")):
-            oled.text(("> " if index == ads_menu_choice else "  ") + label, 0, 14 + index * 12)
+            # Šípka = výber enkodérom, [AKT] = aktuálne použitý režim.
+            active = (index == 0 and ADS1256_ENABLED) or (index == 1 and not ADS1256_ENABLED)
+            oled.text(("> " if index == ads_menu_choice else "  ") + label +
+                      (" [AKT]" if active else ""), 0, 14 + index * 12)
 
     elif mode == "ADC_SAMPLES":
         oled.text("ADS1256 Vzorky", 0, 0)
