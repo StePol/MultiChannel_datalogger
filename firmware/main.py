@@ -6,6 +6,11 @@ import machine, onewire, ds18x20, sdcard, uos, ssd1306, time, ds3231, sht4x, ubi
 ADS1256_ENABLED = True
 ADS1256_VREF = 2.503  # Skutočne nameraná referencia modulu [V]
 ADS1256_SCAN_MS = 1000
+ADS1256_SAMPLE_OPTIONS = (1, 2, 4, 8, 16, 32)
+ads_samples = 1  # Vzorky na kanál; 1 = bez priemerovania
+from adc_average import ADCAverage
+ads_average = ADCAverage(ads_samples)
+ads_collecting = False
 
 TLACITKO_PIN = machine.Pin(15, machine.Pin.IN, machine.Pin.PULL_UP)
 LED_EXT = machine.Pin(14, machine.Pin.OUT)
@@ -20,7 +25,7 @@ adc1 = adc2 = None
 def set_input_mode(enabled):
     """Volá iba hlavná slučka pri vypnutom logovaní, nikdy IRQ."""
     global ADS1256_ENABLED, ads, ads_values, ads_error
-    global bin_vstupy, adc1, adc2, ads_scan_timer
+    global bin_vstupy, adc1, adc2, ads_scan_timer, ads_average, ads_collecting
     # Ukončíme prístup ADC a uvoľníme spoločné GPIO pred novou konfiguráciou.
     if ads is not None:
         ads.cs.value(1)
@@ -31,6 +36,8 @@ def set_input_mode(enabled):
         machine.Pin(gpio, machine.Pin.IN)
     ads_values = None
     ads_error = ""
+    ads_average = ADCAverage(ads_samples)
+    ads_collecting = False
     ADS1256_ENABLED = enabled
     if enabled:
         try:
@@ -125,7 +132,8 @@ mode = "PAUZA"
 # interval: -2 = ADS1256, -1 = SyncRTC, 0 = TEST, 5-300 = zápis [s]
 interval = 60
 test_index = 0
-ads_menu_choice = ADS1256_ENABLED
+ads_menu_choice = 0 if ADS1256_ENABLED else 1
+ads_sample_choice = 0
 last_btn = 1
 posledny_prevod_ds = 0
 filename = ""
@@ -141,7 +149,7 @@ SD_CHECK_INTERVAL = 5000  # Kontrola SD karty každých 5 sekúnd
 last_clk_state = pin_clk.value()
 
 def encoder_handler(pin):
-    global interval, test_index, mode, last_clk_state, ads_menu_choice
+    global interval, test_index, mode, last_clk_state, ads_menu_choice, ads_sample_choice
 
     current_clk_state = pin_clk.value()
     # Vyhodnotíme len pri zmene stavu CLK
@@ -166,7 +174,11 @@ def encoder_handler(pin):
 
         elif mode == "ADC_MENU":
             # Otáčanie iba vyberá; stlačenie potvrdí v hlavnej slučke.
-            ads_menu_choice = direction > 0
+            ads_menu_choice = max(0, min(3, ads_menu_choice + direction))
+
+        elif mode == "ADC_SAMPLES":
+            ads_sample_choice = max(0, min(len(ADS1256_SAMPLE_OPTIONS) - 1,
+                                          ads_sample_choice + direction))
 
         elif mode == "TEST" and roms:
             # Prepínanie senzorov v TEST móde
@@ -210,7 +222,7 @@ while True:
             roms = ds_sensor.scan()
             ds_v = [0.0] * len(roms)
             if interval == -2:
-                ads_menu_choice = ADS1256_ENABLED
+                ads_menu_choice = 0 if ADS1256_ENABLED else 1
                 mode = "ADC_MENU"
             elif interval == -1:
                 # Prechod do SYNC módu
@@ -224,10 +236,25 @@ while True:
                 posledny_zapis_ms = time.ticks_ms()
                 filename = new_recording_filename(lt)
         elif mode == "ADC_MENU":
-            # Zablokuje zmenu výberu enkodérom počas inicializácie GPIO.
+            choice = ads_menu_choice
+            if choice == 2:
+                ads_sample_choice = ADS1256_SAMPLE_OPTIONS.index(ads_samples)
+                mode = "ADC_SAMPLES"
+            elif choice == 3:
+                mode = "PAUZA"
+            else:
+                mode = "ADC_SWITCH"
+                set_input_mode(choice == 0)
+                mode = "PAUZA"
+        elif mode == "ADC_SAMPLES":
             mode = "ADC_SWITCH"
-            set_input_mode(ads_menu_choice)
-            mode = "PAUZA"
+            ads_samples = ADS1256_SAMPLE_OPTIONS[ads_sample_choice]
+            ads_average = ADCAverage(ads_samples)
+            ads_collecting = False
+            ads_values = None  # Nemiešať výsledky starého a nového nastavenia.
+            ads_scan_timer = time.ticks_add(time.ticks_ms(), -ADS1256_SCAN_MS)
+            print("ADS1256 priemerovanie: {} vzoriek/kanal".format(ads_samples))
+            mode = "ADC_MENU"
         else:
             mode = "PAUZA"
         LED_EXT.value(1); time.sleep_ms(100); LED_EXT.value(0)
@@ -242,16 +269,24 @@ while True:
     Batt_ctrl_pin.value(0)        # Okamžite odpojí delič (nulová spotreba)
 
     if ADS1256_ENABLED:
-        if ads is not None and time.ticks_diff(time.ticks_ms(), ads_scan_timer) >= ADS1256_SCAN_MS:
+        if ads is not None and (ads_collecting or
+                time.ticks_diff(time.ticks_ms(), ads_scan_timer) >= ADS1256_SCAN_MS):
+            ads_collecting = True
             try:
-                # Zverejníme len kompletnú novú sadu ôsmich kanálov.
-                ads_values = ads.read_all()
-                ads_error = ""
+                # Jeden čerstvý prevod na slučku; tlačidlo zostáva obsluhované.
+                result = ads_average.step(ads)
+                if result is not None:
+                    ads_values = result
+                    ads_error = ""
+                    ads_collecting = False
+                    ads_scan_timer = time.ticks_ms()
             except Exception as e:
                 ads_values = None
+                ads_average = ADCAverage(ads_samples)
+                ads_collecting = False
                 ads_error = str(e)
                 print("ADS1256 MERANIE CHYBA:", e)
-            ads_scan_timer = time.ticks_ms()
+                ads_scan_timer = time.ticks_ms()
     else:
         v1 = round((adc1.read_u16() * 3.3) / 65535, 2)
         v2 = round((adc2.read_u16() * 3.3) / 65535, 2)
@@ -278,11 +313,14 @@ while True:
         oled.text("Int: {}".format(label), 0, 12)
 
     elif mode == "ADC_MENU":
-        oled.text("ADS1256", 0, 0)
-        oled.text(("> " if ads_menu_choice else "  ") + "On", 0, 16)
-        oled.text(("  " if ads_menu_choice else "> ") + "Off", 0, 28)
+        oled.text("ADS1256 " + ("On" if ADS1256_ENABLED else "Off"), 0, 0)
+        for index, label in enumerate(("On", "Off", "Vzorky: {}".format(ads_samples), "Spat")):
+            oled.text(("> " if index == ads_menu_choice else "  ") + label, 0, 14 + index * 12)
+
+    elif mode == "ADC_SAMPLES":
+        oled.text("ADS1256 Vzorky", 0, 0)
+        oled.text("N: {} / kanal".format(ADS1256_SAMPLE_OPTIONS[ads_sample_choice]), 0, 20)
         oled.text("Stlac = potvrdit", 0, 42)
-        oled.text("Stav: " + ("On" if ADS1256_ENABLED else "Off"), 0, 54)
 
     elif mode == "SYNC":
         # Synchronizácia RTC podľa interných hodín Pico (nastavených Thonny pri spustení)
@@ -369,11 +407,11 @@ while True:
             posledny_zapis_ms = time.ticks_ms()
 
     # 6. SPODNÝ RIADOK DISPLEJA — merania (nie v TEST a SYNC móde)
-    if mode not in ("TEST", "SYNC", "ADC_MENU"):
+    if mode not in ("TEST", "SYNC", "ADC_MENU", "ADC_SAMPLES"):
         oled.text("SHT: {:.1f}C {:.0f}%".format(st, sh), 0, 24)
         if ADS1256_ENABLED:
             if ads_values is None:
-                oled.text("ADS1256 CHYBA", 0, 34)
+                oled.text("ADS1256 CHYBA" if ads_error else "ADS meranie...", 0, 34)
                 oled.text("DS: {}".format(len(roms)), 0, 44)
             else:
                 ch = ((time.ticks_ms() // 2000) % 4) * 2

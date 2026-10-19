@@ -22,8 +22,12 @@ dva analógové a štyri digitálne vstupy. Zmena platí ihneď bez reštartu;
 počas REC nie je dostupná. Po reštarte sa obnoví predvolený stav On.
 Oba režimy používajú spoločné GPIO; zapojenie J3 musí zodpovedať režimu.
 
+Podmenu **ADS1256 → Vzorky** umožňuje zvoliť 1, 2, 4, 8, 16 alebo 32
+vzoriek na kanál. Displej aj CSV používajú aritmetický priemer; vyšší počet
+predlžuje čas aktualizácie. Predvolene je 1 (bez priemerovania).
+
 Cez Thonny nahrajte aktualizovaný `main.py` a súbory `ads1256.py`,
-`logger_csv.py`. Ovládanie a oba CSV formáty sú vo
+`adc_average.py`, `logger_csv.py`. Ovládanie a oba CSV formáty sú vo
 [`firmware/README.md`](firmware/README.md). Nižšie uvedená tabuľka GPIO
 a pôvodná CSV hlavička opisujú režim ADS1256 Off.
 Prepínanie ADS1256 On/Off cez rotačný enkodér bolo odskúšané na Pico

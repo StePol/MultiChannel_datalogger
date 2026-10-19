@@ -44,7 +44,7 @@ for the selected input mode. The selection is kept in RAM; after restarting,
 `ADS1256_ENABLED = True` in `main.py` supplies the default (On).
 `ADS1256_VREF = 2.503` remains the measured reference setting.
 
-Copy `ads1256.py` and `logger_csv.py` along with `main.py` and the existing
+Copy `ads1256.py`, `adc_average.py` and `logger_csv.py` along with `main.py` and the existing
 drivers to the Pico. Thonny is the development and upload environment.
 
 The input configurations are mutually exclusive: GP2–GP5 and GP26/GP27
@@ -63,20 +63,47 @@ voltages relative to GND on the inputs.
 See [J3 wiring and test results](../hardware/schematic/ADS1256_J3.md) and
 [TI ADS1256 datasheet](https://www.ti.com/lit/ds/symlink/ads1256.pdf).
 
-A complete scan is started one second after the previous scan finishes;
-the ADC's 100 SPS setting is not the rate of complete eight-channel scans.
-The OLED rotates through channel pairs every two seconds. CSV stores the
-latest complete scan with six decimal places in volts. On a read failure,
-all eight values are invalidated, the OLED shows `ADS1256 CHYBA`, and CSV
-contains eight empty cells. Subsequent scans retry. Initialization failure requires checking the module and confirming **On**
-again to retry; the firmware does not fall back to the conflicting original
-GPIO assignments.
+### Averaging sample count
+
+In PAUZA, open **ADS1256 → Vzorky**, rotate to choose **1, 2, 4, 8, 16,
+or 32 samples per channel**, and press to confirm. This returns to the
+ADS1256 submenu; select **Spat** to return to PAUZA. On and Off remain
+available in the same submenu. Settings cannot be changed during REC.
+
+The default is 1 (no averaging). The selected count is kept in RAM and
+returns to 1 after restart. For each output set, the logger takes N fresh
+readings on each channel and calculates their arithmetic mean. It cycles
+AN0–AN7 N times, publishing all eight averages together. Discarding an
+unfinished batch on a mode or count change prevents mixed configurations.
+
+One conversion is acquired per main-loop iteration so the encoder and
+stop button remain serviced between readings. A batch requires 8 × N
+iterations (at least approximately 0.4 × N seconds with the existing 50 ms
+loop, plus ADC and peripheral work). A one-second pause follows each
+completed batch. The ADC stays configured at 100 SPS; this is not the
+rate of complete averaged output sets. More averaging trades response
+time for suppression of random noise; it does not remove offset or
+all interference.
+
+The OLED rotates through channel pairs every two seconds. Both display
+and CSV use the latest completed average, with six decimal places in volts.
+If the logging interval is shorter than the averaging cycle, consecutive
+CSV rows can contain the same completed average. Before the first batch
+finishes, channel cells are empty and the display shows `ADS meranie...`.
+CSV column names and layout are unchanged. The chosen sample count is
+printed to Thonny Shell when confirmed.
+
+On a read failure, the unfinished batch is discarded, all eight output
+values are invalidated, and the OLED shows `ADS1256 CHYBA`. CSV then
+contains empty channel cells. Subsequent batches retry. Initialization
+failure can be retried by confirming **On** again. The firmware does not
+fall back to conflicting original GPIO assignments.
 
 ## Verification in Thonny
 
 1. Select **Run → Select interpreter → MicroPython (Raspberry Pi Pico)**.
 2. Stop the running application with **Stop/Restart backend**.
-3. Upload `ads1256.py`, `logger_csv.py` and the updated `main.py` to the
+3. Upload `ads1256.py`, `adc_average.py`, `logger_csv.py` and the updated `main.py` to the
    root of **Raspberry Pi Pico** in Thonny's Files pane. Keep the existing
    peripheral drivers on the Pico.
 4. Restart the board. In Shell, check the startup message confirming
@@ -91,6 +118,10 @@ GPIO assignments.
 7. With suitable original-input wiring, repeat a recording with Off selected
    and verify that the original CSV columns return. Each mode change must
    happen while recording is stopped.
+
+8. In PAUZA, select ADS1256 → Vzorky. Compare 1 and 8 samples per channel
+   on a stable input, allowing each batch to finish. Check averaged display
+   and CSV values, slower refresh, and stop-button response during collection.
 
 ## Measured Parameters
 - SHT4x temperature and relative humidity
@@ -145,6 +176,7 @@ An example recording is available in `../docs/data/`.
 |---|---|
 | `main.py` | Main application, encoder input-mode menu and measurement loop |
 | `ads1256.py` | J3 ADS1256 driver, eight single-ended inputs |
+| `adc_average.py` | Incremental eight-channel arithmetic averaging |
 | `logger_csv.py` | CSV header and row formatting for both input modes |
 | `ds3231.py` | DS3231 RTC driver |
 | `sdcard.py` | microSD card driver |
@@ -163,3 +195,6 @@ On 2026-10-19, the user confirmed that ADS1256 On/Off switching through
 the rotary-encoder menu works on the Pico. This confirms the hardware
 check of the input-mode switch; it does not constitute a new verification
 of ADC accuracy, CSV contents, or fault handling.
+
+The sample-count submenu and averaging added after the On/Off hardware
+check have passed host-side tests; Pico verification of this addition is pending.
