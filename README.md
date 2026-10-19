@@ -26,7 +26,8 @@ Cez Thonny nahrajte aktualizovaný `main.py` a súbory `ads1256.py`,
 `logger_csv.py`. Ovládanie a oba CSV formáty sú vo
 [`firmware/README.md`](firmware/README.md). Nižšie uvedená tabuľka GPIO
 a pôvodná CSV hlavička opisujú režim ADS1256 Off.
-Integrovaný FW ešte vyžaduje skúšku na Pico.
+Prepínanie ADS1256 On/Off cez rotačný enkodér bolo odskúšané na Pico
+a používateľ potvrdil jeho funkčnosť 19. 10. 2026.
 
 ## 🛠 Hardvérová konfigurácia
 | Komponent            | Pin (GP)            | Funkcia                             |

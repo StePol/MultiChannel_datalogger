@@ -159,4 +159,7 @@ The battery measurement circuit and the corresponding firmware are still
 under development and may change.
 
 The integrated ADS1256 firmware has passed host-side simulated checks.
-Deployment and verification of this integrated version on Pico are pending.
+On 2026-10-19, the user confirmed that ADS1256 On/Off switching through
+the rotary-encoder menu works on the Pico. This confirms the hardware
+check of the input-mode switch; it does not constitute a new verification
+of ADC accuracy, CSV contents, or fault handling.
