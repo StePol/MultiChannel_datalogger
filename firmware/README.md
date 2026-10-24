@@ -201,3 +201,114 @@ of ADC accuracy, CSV contents, or fault handling.
 
 The sample-count submenu and averaging added after the On/Off hardware
 check have passed host-side tests; Pico verification of this addition is pending.
+
+
+## Verzia firmvéru z Gitu
+
+Podobne ako ESP32 prehrávač používa datalogger najbližší dosiahnuteľný
+Git tag `vMAJOR.MINOR.PATCH` (prípadne bez `v`), krátke SHA commitu a počet
+commitov v histórii HEAD. Bez tagu sa používa `0.0.0-dev`. Medzi vydaniami
+zostáva verzia posledného tagu, ale SHA a číslo zostavenia sa menia.
+`dirty` znamená, že pri príprave boli prítomné necommitnuté zmeny alebo
+nesledované súbory. Neoznačuje presný obsah týchto zmien.
+
+MicroPython nemá krok kompilácie PlatformIO, preto balík pripravujeme na PC
+z koreňa projektu:
+
+```bash
+python3 tools/prepare_firmware.py
+```
+
+Výstup je v `work/firmware/`: kópie Python súborov z `firmware/` a generovaný
+`build_info.py`. Príprava nenahráva nič na Pico, nemení zdrojové súbory ani
+nevytvára Git tag. Pri opakovaní prepíše iba generovaný priečinok
+`work/firmware/`; neukladajte doň ručné úpravy ani zálohy.
+
+Na Pico prenášajte zodpovedajúce zmenené aplikačné súbory z tohto balíka
+spolu s `build_info.py`. Pred prenosom zastavte REC do PAUZA, overte port
+a zálohujte dotknuté súbory z dosky. Zmenené ovládače a ich závislosti
+preneste spolu s aplikáciou; nespúšťajte automaticky pomocné TimeSet/TimeSyncPC.
+Nevykonávajte hromadné mazanie obsahu Pico ani SD karty.
+
+Pri zavedení verziovania sú nové `main.py` a `build_info.py`. Po overení
+portu a zálohe ich možno preniesť takto (pri zmene iných modulov pridajte aj tie):
+
+```bash
+mpremote connect /dev/ttyACM0 fs cp work/firmware/build_info.py work/firmware/main.py :
+```
+
+Tento príkaz zastaví program a prepíše oba súbory; spustite ho iba pri
+zamýšľanom nasadení na konkrétne Pico. Pre spoľahlivé zachytenie štartovacieho výpisu otvorte konzolu:
+
+```bash
+mpremote connect /dev/ttyACM0 repl
+```
+
+V konzole stlačte Ctrl-C na prerušenie prípadného programu a potom Ctrl-D
+na softvérový reštart a spustenie `main.py`. Záznam musí byť predtým
+zastavený v PAUZA. Samotné `soft-reset repl` môže ponechať dosku v konzole
+bez spustenia aplikácie; vtedy tiež použite Ctrl-D.
+REPL ukončíte Ctrl-X. Pri štarte sa vypíše napríklad:
+
+```text
+[BUILD INFO] version=1.0.0 git=12345678 build=42
+```
+
+Samotné metadáta nedokazujú zhodu všetkých súborov na doske s Gitom.
+Pri ručnom kopírovaní pôvodného `firmware/main.py` bez `build_info.py`
+funguje aplikácia s verziou `0.0.0-dev`, SHA `unknown` a číslom `0`.
+Starý `build_info.py` však zostane starý: pred každým nasadením znovu
+pripravte balík a preneste aj čerstvé metadáta.
+
+### Vydanie novej verzie
+
+Najprv otestujte zmeny a vytvorte commit so zamýšľanými súbormi. Potom
+vytvorte anotovaný tag, napríklad `git tag -a v1.0.0 -m "Version 1.0.0"`,
+a znovu pripravte balík. Prvé vydanie tohto projektu je `v1.0.0`;
+pri ďalšom vydaní zvoľte nové číslo, existujúci tag znovu nevytvárajte.
+Tag vzniká lokálne; jeho publikovanie vyžaduje samostatný push. Tagy
+vydaných verzií spätne nepresúvajte. Do commitov nepatria `.venv/`, `work/`
+ani generovaný `build_info.py`. Pri prázdnej alebo shallow histórii je
+potrebné najprv zabezpečiť úplnú históriu a tagy pre správne číslovanie.
+
+Overenie na PC: `python3 -m unittest discover -s firmware/tests`.
+Výpis verzie ani úspešný PC test nenahrádzajú skúšku na fyzickom Pico.
+
+
+### Jednoduchá úloha v Zede
+
+Na aktuálnom Linux PC je v globálnom `~/.config/zed/tasks.json` úloha
+**Verzia: pripraviť firmvér**. Spustenie: Ctrl+Shift+P → `task: spawn` →
+vybrať názov úlohy. Pred spustením uloží otvorené upravené súbory a
+v koreňovom priečinku aktuálneho projektu zavolá
+`python3 tools/prepare_firmware.py`. Nerobí commit, tag, upload ani push.
+
+Globálna úloha platí aj v ďalších projektoch, ale tie musia poskytovať
+vlastný `tools/prepare_firmware.py`. Samotná úloha do nich verziovanie
+nepridáva. Nový MicroPython projekt musí mať vhodnú štruktúru `firmware/`,
+Git repozitár, ignorovaný `/work/` a aplikáciu čítajúcu generované metadáta.
+Pri PlatformIO projekte ako prehrávač sa verzie generujú počas `pio run`.
+Na inom PC treba preniesť aj globálne nastavenie úlohy; na Windows použiť
+príkaz `python`, ak `python3` nie je dostupný. Projektová alternatíva je
+`.zed/tasks.json`, ktorá sa môže uložiť do repozitára.
+
+
+### Overenie verziovania na Pico – 24. 10. 2026
+
+Používateľ overil spustenie globálnej úlohy v Zede. Pred nahraním bol
+z dosky zálohovaný `main.py` do `work/pico-before-versioning/main.py`.
+Po prenose `main.py` a `build_info.py` a reštarte cez Ctrl-D doska vypísala:
+
+```text
+[BUILD INFO] version=0.0.0-dev git=dbf0b39d build=66 dirty
+Vstupy: ADS1256 AN0-AN7, VREF=2.503 V, PGA=1, 100 SPS, SELFCAL OK
+SD karta pripravena.
+```
+
+Používateľ potvrdil funkčný displej aj ovládanie dataloggera. Toto je
+hardvérová skúška zavedenia verziovania na Pico s MicroPython 1.27.0,
+nie nové overenie presnosti ADC, obsahu CSV ani všetkých režimov priemerovania.
+
+Overený bol vývojový balík pred vytvorením vydávacieho commitu. Po vytvorení
+tagu `v1.0.0` treba znovu pripraviť a podľa potreby nasadiť balík s novými
+metadátami. Existujúce údaje na doske sa vytvorením tagu automaticky nemenia.

@@ -1,5 +1,19 @@
 import machine, onewire, ds18x20, sdcard, uos, ssd1306, time, ds3231, sht4x, ubinascii, gc
 
+# Metadata is generated on the PC; manual deployments remain compatible.
+try:
+    from build_info import BUILD_VERSION, BUILD_GIT_SHA, BUILD_NUMBER, BUILD_DIRTY
+except ImportError:
+    BUILD_VERSION = "0.0.0-dev"
+    BUILD_GIT_SHA = "unknown"
+    BUILD_NUMBER = "0"
+    BUILD_DIRTY = False
+
+print("[BUILD INFO] version={} git={} build={}{}".format(
+    BUILD_VERSION, BUILD_GIT_SHA, BUILD_NUMBER,
+    " dirty" if BUILD_DIRTY else ""))
+
+
 # --- KONFIGURÁCIA ---
 # Predvolený stav po štarte; počas prevádzky sa mení cez menu ADS1256.
 # True = ADS1256 AN0–AN7; False = pôvodné A1/A2 a B1–B4.

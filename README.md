@@ -141,6 +141,23 @@ sa zmeniť. Aktuálne zapojenie je zdokumentované v KiCad schéme.
 - **Tlačidlo enkodéra:** GP15, aktívne zopnutím proti GND s interným pull-up rezistorom.
 - **Stavová LED:** GP14 cez 220 Ω rezistor.
 
+## Verziovanie a vydania
+
+Prvé označené vydanie: **v1.0.0**. Firmvér pri štarte vypisuje verziu
+z Git tagu, krátke SHA, počet commitov a prípadné označenie `dirty`.
+Balík na PC pripravíte z koreňa projektu:
+
+```bash
+python3 tools/prepare_firmware.py
+```
+
+V Zede možno použiť úlohu **Verzia: pripraviť firmvér** cez
+Ctrl+Shift+P → `task: spawn` (na tomto PC je nastavená globálne).
+Príprava vytvára `work/firmware/`; nepublikuje vydanie ani nenahráva na dosku.
+Podrobný postup prípravy, prenosu a skúšky je vo
+[firmware/README.md](firmware/README.md#verzia-firmvéru-z-gitu).
+Zmeny vydaní sú v [CHANGELOG.md](CHANGELOG.md).
+
 ## 📄 Licencia
 
 Tento projekt je licencovaný pod [GNU GPL v3](LICENSE).
