@@ -312,3 +312,31 @@ nie nové overenie presnosti ADC, obsahu CSV ani všetkých režimov priemerovan
 Overený bol vývojový balík pred vytvorením vydávacieho commitu. Po vytvorení
 tagu `v1.0.0` treba znovu pripraviť a podľa potreby nasadiť balík s novými
 metadátami. Existujúce údaje na doske sa vytvorením tagu automaticky nemenia.
+
+
+## Štartovacie logo a verzia
+
+Po inicializácii OLED SSD1306 (128 × 64) sa približne na 2 sekundy zobrazí
+logo MultiChannel Datalogger. Potom sa vymaže a aplikácia pokračuje
+inicializáciou periférií a bežným zobrazením. Pauza je iba pri štarte,
+nie v meracej slučke ani počas REC.
+
+Obrázok v `firmware/logo.py` je nemenný 1-bitový podklad od používateľa.
+Verzia sa vykreslí zvlášť, vpravo dole z `BUILD_VERSION` načítanej
+z generovaného `build_info.py`. Pri ďalšom vydaní netreba meniť logo.
+Vývojová verzia sa zobrazuje ako `v0.0.0-dev`; úplné SHA, číslo a dirty
+zostávajú v sériovom výpise. Text dlhší než 15 znakov sa na OLED skráti
+s koncovým `~`, aby nezasahoval do rámika; sériový výpis ostáva úplný.
+
+Balík pripravte úlohou Zedu alebo `python3 tools/prepare_firmware.py`.
+Pri prvom nasadení tejto funkcie treba po zastavení REC a zálohe preniesť
+**`logo.py`, `main.py` a čerstvý `build_info.py`** z `work/firmware/` na Pico.
+Samotný PNG obrázok na doske netreba. Podklady sú uložené v `docs/logo/`.
+
+PC testy overujú rozmery bitmapy, dynamické umiestnenie verzie a časovanie
+s náhradou displeja. Dňa 24. 10. 2026 používateľ na fyzickom Pico potvrdil
+zobrazenie loga s `v1.0.0` približne na dve sekundy a následný návrat na
+bežnú obrazovku dataloggera. Pred nahratím boli zálohované `main.py` a
+`build_info.py`; obsah troch prenesených súborov bol overený spätným načítaním.
+Testovaný balík hlásil commit `82f419ad`, zostavenie `67 dirty`, teda zmeny
+štartovacej obrazovky ešte neboli commitnuté. Nejde o nové vydanie v1.0.0.

@@ -1,5 +1,13 @@
 # Zmeny vydaní
 
+## Nevydané
+
+- Štartovacie logo na OLED približne na 2 sekundy, s dynamickou verziou
+  z `BUILD_VERSION`. Bitmapa sa pri vydaní novej verzie nemení.
+- PC testy vykreslenia a časovania (celkovo 10 testov prešlo).
+- Používateľ 24. 10. 2026 na Pico potvrdil logo s dynamickou verziou,
+  približne dvojsekundové zobrazenie a návrat na bežnú obrazovku.
+
 ## v1.0.0 – 24. 10. 2026
 
 Prvé označené vydanie existujúceho MicroPython dataloggera.

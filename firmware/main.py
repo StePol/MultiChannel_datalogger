@@ -80,6 +80,8 @@ i2c = machine.I2C(0, sda=machine.Pin(8), scl=machine.Pin(9))
 spi = machine.SPI(0, sck=machine.Pin(18), mosi=machine.Pin(19), miso=machine.Pin(16))
 oled = ssd1306.SSD1306_I2C(128, 64, i2c)
 oled.write_cmd(0xA1); oled.write_cmd(0xC8)
+from logo import show_startup
+show_startup(oled, BUILD_VERSION)
 rtc_ext = ds3231.DS3231(i2c)
 senzor_sht = sht4x.SHT4X(i2c)
 ds_sensor = ds18x20.DS18X20(onewire.OneWire(machine.Pin(22)))
