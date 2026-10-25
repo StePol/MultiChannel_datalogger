@@ -2,6 +2,22 @@
 
 Tento projekt predstavuje robustný amatérsky datalogger postavený na mikrokontroléri Raspberry Pi Pico. Zariadenie monitoruje teplotu, vlhkosť, analógové napätia, binárne vstupy a stav batérie.
 
+## 📷 Prvá verzia zariadenia
+
+Prvá fyzická verzia dataloggera v kryte s OLED displejom a rotačným
+ovládačom. Fotografie ukazujú hotovú zostavu, vnútorné zapojenie a
+pripojenie externého modulu ADS1256.
+
+![Prvá verzia dataloggera s príslušenstvom](docs/photos/v1/zariadenie.jpg)
+
+| Vnútorné zapojenie | OLED displej |
+|---|---|
+| ![Vnútorné usporiadanie prototypu a batéria](docs/photos/v1/vnutorne-zapojenie.jpg) | ![Zobrazenie údajov na OLED displeji](docs/photos/v1/displej.jpg) |
+
+[Kompletná galéria prvej verzie zariadenia](docs/photos/v1/README.md)
+obsahuje aj ďalšie pohľady a externý modul ADS1256. Fotografie dokumentujú
+prototyp; aktuálne zapojenie je uvedené v hardvérovej dokumentácii.
+
 ## 🚀 Kľúčové vlastnosti
 
 - **Meranie prostredia:** SHT4x pre teplotu a relatívnu vlhkosť.
