@@ -29,26 +29,6 @@ prototyp; aktuálne zapojenie je uvedené v hardvérovej dokumentácii.
 - **Používateľské rozhranie:** SSD1306 OLED displej a rotačný enkodér s tlačidlom.
 - **Presný čas:** externý RTC DS3231 synchronizovaný s interným RTC Raspberry Pi Pico.
 
-## ADS1256 – výber vstupov enkodérom
-
-Pri vypnutom logovaní (PAUZA) vyberte položku **ADS1256** vedľa SyncRTC
-a TEST. Stlačením otvorte podmenu, otočením vyberte **On/Off** a ďalším
-stlačením potvrďte. **On** zapne čítanie AN0–AN7, **Off** obnoví pôvodné
-dva analógové a štyri digitálne vstupy. Zmena platí ihneď bez reštartu;
-počas REC nie je dostupná. Po reštarte sa obnoví predvolený stav On.
-Oba režimy používajú spoločné GPIO; zapojenie J3 musí zodpovedať režimu.
-
-Podmenu **ADS1256 → Vzorky** umožňuje zvoliť 1, 2, 4, 8, 16 alebo 32
-vzoriek na kanál. Displej aj CSV používajú aritmetický priemer; vyšší počet
-predlžuje čas aktualizácie. Predvolene je 1 (bez priemerovania).
-
-Cez Thonny nahrajte aktualizovaný `main.py` a súbory `ads1256.py`,
-`adc_average.py`, `logger_csv.py`. Ovládanie a oba CSV formáty sú vo
-[`firmware/README.md`](firmware/README.md). Nižšie uvedená tabuľka GPIO
-a pôvodná CSV hlavička opisujú režim ADS1256 Off.
-Prepínanie ADS1256 On/Off cez rotačný enkodér bolo odskúšané na Pico
-a používateľ potvrdil jeho funkčnosť 19. 10. 2026.
-
 ## 🛠 Hardvérová konfigurácia
 | Komponent            | Pin (GP)            | Funkcia                             |
 |----------------------|---------------------|-------------------------------------|
@@ -80,13 +60,45 @@ Dokumentácia hardvéru a KiCad projektu je v
 
 - **PAUZA** — zariadenie vykonáva merania a zobrazuje aktuálne hodnoty, ale nezapisuje ich na SD kartu. Enkodérom je možné zvoliť režim alebo interval záznamu.
 - **REC** — namerané údaje sa ukladajú na SD kartu v nastavenom intervale. Pre každý záznam sa vytvorí nový CSV súbor s názvom `YYYYMMDD_HHMMSS.csv`.
-- **TEST** — umožňuje prechádzať pripojené DS18B20 senzory a zobrazovať ich ROM ID a aktuálnu teplotu.
-- **SYNC RTC** — synchronizuje externý RTC DS3231 s aktuálnym časom interného RTC Raspberry Pi Pico.
+- **1WIRE** — umožňuje prechádzať pripojené DS18B20 senzory a zobrazovať ich ROM ID a aktuálnu teplotu. Otočením enkodéra sa vyberá senzor, stlačením sa vrátite do PAUZA. Ak sa žiadny senzor nenájde, displej zobrazí `Ziadne senzory!`.
+- **Restart** — v PAUZA vyberte túto položku a stlačte enkodér. Zariadenie synchronizuje súborový systém a reštartuje Pico, čím znovu spustí aplikáciu. Počas REC nie je táto voľba dostupná.
+- **SyncRTC** — synchronizuje externý RTC DS3231 s aktuálnym časom interného RTC Raspberry Pi Pico.
 
-Interval záznamu je možné nastaviť od 5 do 300 sekúnd v krokoch po 5 sekúnd.
+V PAUZA sa otočením enkodéra vyberá **Restart → SyncRTC → ADS1256 →
+1WIRE → 5 až 300 s**. Stlačením sa otvorí zvolená položka alebo spustí
+záznam s vybraným intervalom. Interval sa nastavuje v krokoch po 5 sekundách.
+Počas REC sa stlačením enkodéra záznam zastaví a zariadenie sa vráti do PAUZA.
 
 Podrobný popis ovládania a režimov je v
 [`firmware/README.md`](firmware/README.md).
+
+### ADS1256 – výber vstupov a priemerovanie
+
+Pri vypnutom logovaní (**PAUZA**) vyberte **ADS1256** a stlačte enkodér.
+Otočením vyberte **On** alebo **Off** a stlačením potvrďte:
+
+- **On** — zapne ADS1256 a meranie ôsmich vstupov AN0–AN7.
+- **Off** — obnoví pôvodné dva analógové vstupy A1/A2 a štyri digitálne vstupy B1–B4.
+
+Otočenie iba posúva výber; zmena sa vykoná až potvrdením a platí ihneď
+bez reštartu. Značka `>` označuje výber, `[AKT]` aktuálny vstupný režim.
+Oba režimy zdieľajú GPIO a vyžadujú zodpovedajúce zapojenie J3. Pred
+pripojením pôvodných vstupných signálov odpojte modul ADS1256.
+
+V **ADS1256 → Vzorky** možno zvoliť **1, 2, 4, 8, 16 alebo 32 vzoriek
+na kanál**. Stlačením sa počet potvrdí a zobrazí sa podmenu ADS1256;
+položkou **Spat** sa vrátite do PAUZA. Displej aj CSV používajú aritmetický
+priemer čerstvých meraní; vyšší počet predlžuje čas aktualizácie.
+Počas REC sa vstupný režim ani počet vzoriek nedajú meniť.
+
+Voľba On/Off a počet vzoriek sa ukladajú samostatne do internej pamäte
+Pico a obnovia sa aj po odpojení napájania. Bez platného nastavenia sa
+použije **Off** a **1 vzorka**. Pri chybe uloženia sa zobrazí
+`Ulozenie CHYBA`; voľba platí v pamäti RAM, ale uloženie treba zopakovať.
+
+Podrobné ovládanie, aktualizácia firmvéru a oba CSV formáty sú vo
+[`firmware/README.md`](firmware/README.md). Tabuľka GPIO vyššie a CSV
+hlavička nižšie opisujú pôvodné vstupy, teda **ADS1256 Off**.
 
 ## 💾 Formát dát (CSV)
 
