@@ -31,7 +31,7 @@ This directory contains the software running on the Raspberry Pi Pico (RP2040).
 ## ADS1256 input-mode menu
 
 With logging stopped (**PAUZA**), turn the encoder to **ADS1256**, alongside
-**SyncRTC** and **TEST**, then press the encoder button to open its submenu.
+**SyncRTC** and **1WIRE**, then press the encoder button to open its submenu.
 Turn toward **On** or **Off** and press again to confirm and return to PAUZA:
 
 - **On** initializes and calibrates ADS1256 and selects AN0–AN7.
@@ -146,11 +146,11 @@ The logger is controlled using the rotary encoder and its push button.
 
 - **PAUZA** — measurements are displayed, but data is not written to the SD card.
 - **REC** — measurements are periodically written to a CSV file.
-- **TEST** — displays connected DS18B20 sensors, their ROM IDs and temperatures.
+- **1WIRE** — displays connected DS18B20 sensors, their ROM IDs and temperatures.
 - **SYNC** — synchronizes the external DS3231 RTC with the current internal RTC time.
 
-While in PAUZA mode, the rotary encoder selects `ADS1256`, `SyncRTC`,
-`TEST`, or a logging interval from 5 to 300 seconds in 5-second steps.
+While in PAUZA mode, the rotary encoder selects `SyncRTC`, `ADS1256`,
+`1WIRE`, or a logging interval from 5 to 300 seconds in 5-second steps.
 
 ## CSV Format
 

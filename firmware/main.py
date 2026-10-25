@@ -145,7 +145,7 @@ def new_recording_filename(timestamp):
 
 # --- PREMENNÉ ---
 mode = "PAUZA"
-# interval: -2 = ADS1256, -1 = SyncRTC, 0 = TEST, 5-300 = zápis [s]
+# interval: -2 = SyncRTC, -1 = ADS1256, 0 = TEST, 5-300 = zápis [s]
 interval = 60
 test_index = 0
 ads_menu_choice = 0 if ADS1256_ENABLED else 1
@@ -176,15 +176,15 @@ def encoder_handler(pin):
         direction = 1 if dt_state != current_clk_state else -1
 
         if mode == "PAUZA":
-            # Menu: ADS1256 (-2) -> SyncRTC (-1) -> TEST (0) -> 5s ... 300s
+            # Menu: SyncRTC (-2) -> ADS1256 (-1) -> TEST (0) -> 5s ... 300s
             if direction == -1:
                 if interval > 5:    interval -= 5
                 elif interval == 5: interval = 0    # 5s -> TEST
-                elif interval == 0: interval = -1   # TEST -> SyncRTC
-                elif interval == -1: interval = -2  # SyncRTC -> ADS1256
+                elif interval == 0: interval = -1   # TEST -> ADS1256
+                elif interval == -1: interval = -2  # ADS1256 -> SyncRTC
             else:
-                if interval == -2:   interval = -1  # ADS1256 -> SyncRTC
-                elif interval == -1: interval = 0   # SyncRTC -> TEST
+                if interval == -2:   interval = -1  # SyncRTC -> ADS1256
+                elif interval == -1: interval = 0   # ADS1256 -> TEST
                 elif interval == 0:  interval = 5   # TEST -> 5s
                 elif interval < 300: interval += 5
 
@@ -237,10 +237,10 @@ while True:
         if mode == "PAUZA":
             roms = ds_sensor.scan()
             ds_v = [0.0] * len(roms)
-            if interval == -2:
+            if interval == -1:
                 ads_menu_choice = 0 if ADS1256_ENABLED else 1
                 mode = "ADC_MENU"
-            elif interval == -1:
+            elif interval == -2:
                 # Prechod do SYNC módu
                 mode = "SYNC"
             elif interval == 0:
@@ -324,9 +324,9 @@ while True:
     if mode == "PAUZA":
         oled.text("STOP", 0, 0)
         # Zobrazenie aktuálne zvolenej položky menu
-        if interval == -2:  label = "ADS1256"
-        elif interval == -1: label = "SyncRTC"
-        elif interval == 0: label = "TEST"
+        if interval == -2:  label = "SyncRTC"
+        elif interval == -1: label = "ADS1256"
+        elif interval == 0: label = "1WIRE"
         else:               label = "{}s".format(interval)
         oled.text("Int: {}".format(label), 0, 12)
 
@@ -370,7 +370,7 @@ while True:
         mode = "PAUZA"
 
     elif mode == "TEST":
-        oled.text("TEST", 0, 0)
+        oled.text("1WIRE", 0, 0)
         if roms:
             fa = ubinascii.hexlify(roms[test_index]).decode()
             oled.text("Senzor: {}/{}".format(test_index + 1, len(roms)), 0, 12)
