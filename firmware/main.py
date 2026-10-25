@@ -18,11 +18,12 @@ print("[BUILD INFO] version={} git={} build={}{}".format(
 # Uložený stav po štarte; bez platného nastavenia sa použije Off.
 # True = ADS1256 AN0–AN7; False = pôvodné A1/A2 a B1–B4.
 from input_settings import load_input_mode, save_input_mode
+from input_settings import load_sample_count, save_sample_count, SAMPLE_OPTIONS
 ADS1256_ENABLED = load_input_mode()
 ADS1256_VREF = 2.503  # Skutočne nameraná referencia modulu [V]
 ADS1256_SCAN_MS = 1000
-ADS1256_SAMPLE_OPTIONS = (1, 2, 4, 8, 16, 32)
-ads_samples = 1  # Vzorky na kanál; 1 = bez priemerovania
+ADS1256_SAMPLE_OPTIONS = SAMPLE_OPTIONS
+ads_samples = load_sample_count()  # Bez platného nastavenia 1 = bez priemerovania
 from adc_average import ADCAverage
 ads_average = ADCAverage(ads_samples)
 ads_collecting = False
@@ -286,6 +287,12 @@ while True:
             ads_values = None  # Nemiešať výsledky starého a nového nastavenia.
             ads_scan_timer = time.ticks_add(time.ticks_ms(), -ADS1256_SCAN_MS)
             print("ADS1256 priemerovanie: {} vzoriek/kanal".format(ads_samples))
+            try:
+                save_sample_count(ads_samples)
+                settings_error = False
+            except OSError as e:
+                print("VZORKY ULOZENIE CHYBA:", e)
+                settings_error = True
             mode = "ADC_MENU"
         else:
             mode = "PAUZA"

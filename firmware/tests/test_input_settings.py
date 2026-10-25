@@ -48,6 +48,49 @@ class InputSettingsTests(unittest.TestCase):
                 self.settings.save_input_mode(False, self.path)
         self.assertTrue(self.settings.load_input_mode(self.path))
 
+    def test_sample_counts_survive_reload_without_changing_input_mode(self):
+        samples_path = str(Path(self.directory.name) / "ads_samples.cfg")
+        with patch.object(self.settings.os, "sync") as sync:
+            self.settings.save_input_mode(True, self.path)
+            for count in (1, 2, 4, 8, 16, 32):
+                with self.subTest(count=count):
+                    self.assertTrue(self.settings.save_sample_count(count, samples_path))
+                    self.assertEqual(self.settings.load_sample_count(samples_path), count)
+                    self.assertTrue(self.settings.load_input_mode(self.path))
+                    sync.reset_mock()
+                    with patch.object(self.settings.os, "rename") as rename:
+                        self.assertFalse(self.settings.save_sample_count(count, samples_path))
+                        rename.assert_not_called()
+                        sync.assert_not_called()
+            self.settings.save_input_mode(False, self.path)
+            self.assertEqual(self.settings.load_sample_count(samples_path), 32)
+
+    def test_missing_invalid_or_unfinished_sample_count_defaults_to_one(self):
+        self.assertEqual(self.settings.load_sample_count(self.path), 1)
+        Path(self.path + ".tmp").write_text("32\n")
+        self.assertEqual(self.settings.load_sample_count(self.path), 1)
+        for value in ("", "0", "3", "64", "-1", "True", "8 garbage"):
+            with self.subTest(value=value):
+                Path(self.path).write_text(value)
+                self.assertEqual(self.settings.load_sample_count(self.path), 1)
+
+    def test_invalid_sample_count_is_rejected_without_overwriting(self):
+        Path(self.path).write_text("8\n")
+        for value in (0, 3, 64, -1, True, 2.0, "8"):
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError):
+                    self.settings.save_sample_count(value, self.path)
+                self.assertEqual(self.settings.load_sample_count(self.path), 8)
+
+    def test_sample_save_failure_preserves_previous_count(self):
+        Path(self.path).write_text("8\n")
+        for operation in ("sync", "rename"):
+            with self.subTest(operation=operation):
+                with patch.object(self.settings.os, operation, side_effect=OSError("failure")):
+                    with self.assertRaises(OSError):
+                        self.settings.save_sample_count(32, self.path)
+                self.assertEqual(self.settings.load_sample_count(self.path), 8)
+
 
 if __name__ == "__main__":
     unittest.main()

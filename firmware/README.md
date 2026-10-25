@@ -51,7 +51,7 @@ previous setting. A save failure keeps the submenu open with `Ulozenie CHYBA`;
 the selected mode is active in RAM but saving must be retried.
 Saved **On** attempts ADS1256 initialization at startup; an ADC failure
 keeps On and reports the error without enabling the original inputs.
-The averaging count remains a RAM-only setting, defaulting to 1 at startup.
+The averaging count is saved separately in `ads_samples.cfg`.
 `ADS1256_VREF = 2.503` remains the measured reference setting.
 
 Copy `input_settings.py`, `ads1256.py`, `adc_average.py` and `logger_csv.py` along with `main.py` and the existing
@@ -80,8 +80,18 @@ or 32 samples per channel**, and press to confirm. This returns to the
 ADS1256 submenu; select **Spat** to return to PAUZA. On and Off remain
 available in the same submenu. Settings cannot be changed during REC.
 
-The default is 1 (no averaging). The selected count is kept in RAM and
-returns to 1 after restart. For each output set, the logger takes N fresh
+Confirmation saves the count to `ads_samples.cfg` in internal flash and
+startup restores it, including after power loss. Missing or invalid settings
+default to 1 (no averaging). An unchanged count does not rewrite flash.
+Saving uses the same temporary-file replacement as On/Off. A failure shows
+`Ulozenie CHYBA` in the ADS1256 submenu; the count is active in RAM, and
+**Vzorky** must be confirmed again to retry saving. On/Off and the count
+are stored independently, so changing either preserves the other.
+For an update adding this feature, deploy `input_settings.py` and `main.py`
+from the freshly prepared bundle together with `build_info.py`. Back up
+the existing files and configuration first. Preserve `input_mode.cfg` and
+`ads_samples.cfg` on the Pico; do not replace them with PC defaults.
+For each output set, the logger takes N fresh
 readings on each channel and calculates their arithmetic mean. It cycles
 AN0–AN7 N times, publishing all eight averages together. Discarding an
 unfinished batch on a mode or count change prevents mixed configurations.
@@ -359,3 +369,21 @@ bežnú obrazovku dataloggera. Pred nahratím boli zálohované `main.py` a
 `build_info.py`; obsah troch prenesených súborov bol overený spätným načítaním.
 Testovaný balík hlásil commit `82f419ad`, zostavenie `67 dirty`, teda zmeny
 štartovacej obrazovky ešte neboli commitnuté. Nejde o nové vydanie v1.0.0.
+
+## Ukladanie počtu vzoriek – v1.0.4, 25. 10. 2026
+
+Verzia v1.0.4 dopĺňa trvalé uloženie počtu vzoriek na kanál (1, 2, 4, 8,
+16 alebo 32) pri potvrdení **ADS1256 → Vzorky**. Po štarte sa obnoví uložená
+hodnota; bez platného súboru sa použije 1. Voľba On/Off zostáva samostatná.
+Pri zmene počtu sa rozpracovaná dávka aj staré výsledky zahodia.
+
+Na PC prešlo 25 testov vrátane načítania, validácie, vynechania opakovaného
+zápisu, chýb uloženia a zrušenia rozpracovanej dávky. Na Pico s MicroPython
+1.27.0 bol overený zápis a načítanie hodnoty 32 v skúšobnom súbore; pôvodné
+nastavenie On/1 zostalo zachované. Používateľ následne potvrdil overenie
+uchovania počtu vzoriek po odpojení napájania na vývojovom balíku
+`1.0.3`, commit `4d9935ad`, zostavenie `70 dirty`, pred vydaním v1.0.4.
+
+Toto overenie nepotvrdzuje presnosť ani spoľahlivosť komunikácie ADS1256.
+Pri poslednom štarte tohto vývojového balíka sa objavil `ADS1256 DRDY timeout`;
+SD karta bola pripravená. Chybu komunikácie treba posudzovať samostatne.

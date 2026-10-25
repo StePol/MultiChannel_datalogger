@@ -88,6 +88,37 @@ class RestartMenuTests(unittest.TestCase):
                     self.assertEqual(context["settings_error"], fail_save)
                     self.assertEqual(context["mode"], "ADC_MENU" if fail_save else "PAUZA")
 
+    def test_sample_confirmation_saves_and_discards_unfinished_batch(self):
+        for fail_save in (False, True):
+            with self.subTest(fail_save=fail_save):
+                saved = []
+                def save(count):
+                    saved.append(count)
+                    if fail_save:
+                        raise OSError("flash failure")
+                context = {
+                    "mode": "ADC_SAMPLES", "last_btn": 1, "curr_btn": 0,
+                    "ADS1256_SAMPLE_OPTIONS": (1, 2, 4, 8, 16, 32),
+                    "ads_sample_choice": 3, "ads_samples": 1,
+                    "ads_values": [1] * 8, "ads_collecting": True,
+                    "ADCAverage": lambda count: ("new batch", count),
+                    "ADS1256_SCAN_MS": 1000,
+                    "time": types.SimpleNamespace(sleep_ms=lambda ms: None,
+                                                  ticks_ms=lambda: 5000,
+                                                  ticks_add=lambda a, b: a + b),
+                    "LED_EXT": types.SimpleNamespace(value=lambda value: None),
+                    "save_sample_count": save,
+                }
+                exec(self.button_code, context)
+                self.assertEqual(saved, [8])
+                self.assertEqual(context["ads_samples"], 8)
+                self.assertEqual(context["ads_average"], ("new batch", 8))
+                self.assertFalse(context["ads_collecting"])
+                self.assertIsNone(context["ads_values"])
+                self.assertEqual(context["ads_scan_timer"], 4000)
+                self.assertEqual(context["settings_error"], fail_save)
+                self.assertEqual(context["mode"], "ADC_MENU")
+
 
 if __name__ == "__main__":
     unittest.main()
