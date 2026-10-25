@@ -149,7 +149,7 @@ The logger is controlled using the rotary encoder and its push button.
 - **TEST** — displays connected DS18B20 sensors, their ROM IDs and temperatures.
 - **SYNC** — synchronizes the external DS3231 RTC with the current internal RTC time.
 
-While in PAUZA mode, the rotary encoder selects `ADS1256`, `SyncRTC`,
+While in PAUZA mode, the rotary encoder selects `SyncRTC`, `ADS1256`,
 `TEST`, or a logging interval from 5 to 300 seconds in 5-second steps.
 
 ## CSV Format
