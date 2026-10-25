@@ -43,11 +43,18 @@ active On/Off mode, even when the cursor points elsewhere. Both ADS1256
 submenus hide the clock so their titles remain fully readable.
 The menu cannot be entered during REC. Stop recording first. Switching
 happens immediately without restarting. A new recording uses the CSV layout
-for the selected input mode. The selection is kept in RAM; after restarting,
-`ADS1256_ENABLED = True` in `main.py` supplies the default (On).
+for the selected input mode. Confirmation saves On/Off to `input_mode.cfg`
+in the Pico internal flash, so the choice survives power loss. Missing or
+invalid settings default to **Off** (original inputs). An unchanged choice
+does not rewrite flash. A temporary file is synced before replacing the
+previous setting. A save failure keeps the submenu open with `Ulozenie CHYBA`;
+the selected mode is active in RAM but saving must be retried.
+Saved **On** attempts ADS1256 initialization at startup; an ADC failure
+keeps On and reports the error without enabling the original inputs.
+The averaging count remains a RAM-only setting, defaulting to 1 at startup.
 `ADS1256_VREF = 2.503` remains the measured reference setting.
 
-Copy `ads1256.py`, `adc_average.py` and `logger_csv.py` along with `main.py` and the existing
+Copy `input_settings.py`, `ads1256.py`, `adc_average.py` and `logger_csv.py` along with `main.py` and the existing
 drivers to the Pico. Thonny is the development and upload environment.
 
 The input configurations are mutually exclusive: GP2–GP5 and GP26/GP27
@@ -88,7 +95,10 @@ rate of complete averaged output sets. More averaging trades response
 time for suppression of random noise; it does not remove offset or
 all interference.
 
-The OLED rotates through channel pairs every two seconds. Both display
+The OLED cycles through AN0–AN7 on row 4, one channel every two seconds.
+Row 4 also shows the waiting or error status; row 5 always shows the number
+of detected 1WIRE (DS18B20) sensors (`DS: n`) while ADS1256 is enabled.
+Both display
 and CSV use the latest completed average, with six decimal places in volts.
 If the logging interval is shorter than the averaging cycle, consecutive
 CSV rows can contain the same completed average. Before the first batch
@@ -102,6 +112,12 @@ contains empty channel cells. Subsequent batches retry. Initialization
 failure can be retried by confirming **On** again. The firmware does not
 fall back to conflicting original GPIO assignments.
 
+Register verification checks only writable STATUS bits (mask `0x0E`);
+bit 0 is the read-only, changing DRDY status and must not be compared to
+the written configuration. A register mismatch reports its address, read
+value, expected value and mask in the serial console. A `DRDY timeout`
+is a separate failure, not explained by this verification check alone.
+
 ## Verification in Thonny
 
 1. Select **Run → Select interpreter → MicroPython (Raspberry Pi Pico)**.
@@ -113,7 +129,8 @@ fall back to conflicting original GPIO assignments.
    AN0–AN7 and SELFCAL OK (the default mode is On).
 5. In PAUZA, rotate to ADS1256, press, select Off, and press to confirm.
    Open the submenu again, select On and confirm. Check Shell for successful
-   initialization and confirm that the OLED rotates through channel pairs.
+   initialization and confirm that the OLED cycles through AN0–AN7 on row 4
+   while row 5 keeps showing the DS sensor count, including on ADC errors.
 6. Select a 5-second recording interval. Check Shell and the new CSV file:
    AN0–AN7 must be present and A1/A2/BIN absent. Battery and temperature
    readings must remain. While REC is active, rotation must not open the
@@ -149,8 +166,10 @@ The logger is controlled using the rotary encoder and its push button.
 - **1WIRE** — displays connected DS18B20 sensors, their ROM IDs and temperatures.
 - **SYNC** — synchronizes the external DS3231 RTC with the current internal RTC time.
 
-While in PAUZA mode, the rotary encoder selects `SyncRTC`, `ADS1256`,
+While in PAUZA mode, the rotary encoder selects `Restart`, `SyncRTC`, `ADS1256`,
 `1WIRE`, or a logging interval from 5 to 300 seconds in 5-second steps.
+Pressing the encoder on `Restart` synchronizes the filesystem and resets
+the Pico, starting the application again. Restart is unavailable during REC.
 
 ## CSV Format
 

@@ -30,9 +30,12 @@ class ADS1256:
         # STATUS: MSB first, buffer off, auto-calibration off.
         for reg, value in ((0, 0x00), (1, 0x08), (2, 0x20), (3, 0x82)):
             self._write_reg(reg, value)
-            mask = 0x0F if reg == 0 else 0xFF
-            if self._read_reg(reg) & mask != value:
-                raise OSError("ADS1256 register verification failed")
+            # STATUS: kontrolujeme len ORDER/ACAL/BUFEN, nie živý bit DRDY.
+            mask = 0x0E if reg == 0 else 0xFF
+            actual = self._read_reg(reg)
+            if actual & mask != value:
+                raise OSError("ADS1256 register verification failed: reg=0x{:02X} read=0x{:02X} expected=0x{:02X} mask=0x{:02X}".format(
+                    reg, actual, value, mask))
         self._command(0xF0)  # SELFCAL after setting PGA and data rate
         time.sleep_ms(1)  # allow DRDY to rise before waiting for completion
         self._wait_ready()

@@ -15,9 +15,10 @@ print("[BUILD INFO] version={} git={} build={}{}".format(
 
 
 # --- KONFIGURÁCIA ---
-# Predvolený stav po štarte; počas prevádzky sa mení cez menu ADS1256.
+# Uložený stav po štarte; bez platného nastavenia sa použije Off.
 # True = ADS1256 AN0–AN7; False = pôvodné A1/A2 a B1–B4.
-ADS1256_ENABLED = True
+from input_settings import load_input_mode, save_input_mode
+ADS1256_ENABLED = load_input_mode()
 ADS1256_VREF = 2.503  # Skutočne nameraná referencia modulu [V]
 ADS1256_SCAN_MS = 1000
 ADS1256_SAMPLE_OPTIONS = (1, 2, 4, 8, 16, 32)
@@ -145,10 +146,11 @@ def new_recording_filename(timestamp):
 
 # --- PREMENNÉ ---
 mode = "PAUZA"
-# interval: -2 = SyncRTC, -1 = ADS1256, 0 = TEST, 5-300 = zápis [s]
+# interval: -3 = Restart, -2 = SyncRTC, -1 = ADS1256, 0 = 1WIRE, 5-300 = zápis [s]
 interval = 60
 test_index = 0
 ads_menu_choice = 0 if ADS1256_ENABLED else 1
+settings_error = False
 ads_sample_choice = 0
 last_btn = 1
 posledny_prevod_ds = 0
@@ -176,14 +178,16 @@ def encoder_handler(pin):
         direction = 1 if dt_state != current_clk_state else -1
 
         if mode == "PAUZA":
-            # Menu: SyncRTC (-2) -> ADS1256 (-1) -> TEST (0) -> 5s ... 300s
+            # Menu: Restart (-3) -> SyncRTC (-2) -> ADS1256 (-1) -> 1WIRE (0) -> 5s ... 300s
             if direction == -1:
                 if interval > 5:    interval -= 5
                 elif interval == 5: interval = 0    # 5s -> TEST
                 elif interval == 0: interval = -1   # TEST -> ADS1256
                 elif interval == -1: interval = -2  # ADS1256 -> SyncRTC
+                elif interval == -2: interval = -3  # SyncRTC -> Restart
             else:
-                if interval == -2:   interval = -1  # SyncRTC -> ADS1256
+                if interval == -3:   interval = -2  # Restart -> SyncRTC
+                elif interval == -2: interval = -1  # SyncRTC -> ADS1256
                 elif interval == -1: interval = 0   # ADS1256 -> TEST
                 elif interval == 0:  interval = 5   # TEST -> 5s
                 elif interval < 300: interval += 5
@@ -237,8 +241,13 @@ while True:
         if mode == "PAUZA":
             roms = ds_sensor.scan()
             ds_v = [0.0] * len(roms)
-            if interval == -1:
+            if interval == -3:
+                # Reštart len v PAUZA a v hlavnej slučke, nie v IRQ.
+                uos.sync()
+                machine.reset()
+            elif interval == -1:
                 ads_menu_choice = 0 if ADS1256_ENABLED else 1
+                settings_error = False
                 mode = "ADC_MENU"
             elif interval == -2:
                 # Prechod do SYNC módu
@@ -261,7 +270,14 @@ while True:
             else:
                 mode = "ADC_SWITCH"
                 set_input_mode(choice == 0)
-                mode = "PAUZA"
+                try:
+                    save_input_mode(ADS1256_ENABLED)
+                    settings_error = False
+                    mode = "PAUZA"
+                except OSError as e:
+                    print("NASTAVENIE ULOZENIE CHYBA:", e)
+                    settings_error = True
+                    mode = "ADC_MENU"
         elif mode == "ADC_SAMPLES":
             mode = "ADC_SWITCH"
             ads_samples = ADS1256_SAMPLE_OPTIONS[ads_sample_choice]
@@ -324,14 +340,16 @@ while True:
     if mode == "PAUZA":
         oled.text("STOP", 0, 0)
         # Zobrazenie aktuálne zvolenej položky menu
-        if interval == -2:  label = "SyncRTC"
+        if interval == -3:  label = "Restart"
+        elif interval == -2: label = "SyncRTC"
         elif interval == -1: label = "ADS1256"
         elif interval == 0: label = "1WIRE"
         else:               label = "{}s".format(interval)
         oled.text("Int: {}".format(label), 0, 12)
 
     elif mode == "ADC_MENU":
-        oled.text("ADS1256 " + ("On" if ADS1256_ENABLED else "Off"), 0, 0)
+        oled.text("Ulozenie CHYBA" if settings_error else
+                  "ADS1256 " + ("On" if ADS1256_ENABLED else "Off"), 0, 0)
         for index, label in enumerate(("On", "Off", "Vzorky: {}".format(ads_samples), "Spat")):
             # Šípka = výber enkodérom, [AKT] = aktuálne použitý režim.
             active = (index == 0 and ADS1256_ENABLED) or (index == 1 and not ADS1256_ENABLED)
@@ -433,11 +451,10 @@ while True:
         if ADS1256_ENABLED:
             if ads_values is None:
                 oled.text("ADS1256 CHYBA" if ads_error else "ADS meranie...", 0, 34)
-                oled.text("DS: {}".format(len(roms)), 0, 44)
             else:
-                ch = ((time.ticks_ms() // 2000) % 4) * 2
+                ch = (time.ticks_ms() // 2000) % 8
                 oled.text("AN{}: {:.6f}V".format(ch, ads_values[ch]), 0, 34)
-                oled.text("AN{}: {:.6f}V".format(ch + 1, ads_values[ch + 1]), 0, 44)
+            oled.text("DS: {}".format(len(roms)), 0, 44)
         else:
             oled.text("ADC: {:.2f}V {:.2f}V".format(v1, v2), 0, 34)
             oled.text("DS: {} BIN: {}".format(len(roms), bin_s), 0, 44)
