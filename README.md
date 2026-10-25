@@ -58,11 +58,14 @@ Dokumentácia hardvéru a KiCad projektu je v
 
 ## ⚙️ Prevádzkové režimy
 
-- **PAUZA** — zariadenie vykonáva merania a zobrazuje aktuálne hodnoty, ale nezapisuje ich na SD kartu. Enkodérom je možné zvoliť režim alebo interval záznamu.
-- **REC** — namerané údaje sa ukladajú na SD kartu v nastavenom intervale. Pre každý záznam sa vytvorí nový CSV súbor s názvom `YYYYMMDD_HHMMSS.csv`.
-- **1WIRE** — umožňuje prechádzať pripojené DS18B20 senzory a zobrazovať ich ROM ID a aktuálnu teplotu. Otočením enkodéra sa vyberá senzor, stlačením sa vrátite do PAUZA. Ak sa žiadny senzor nenájde, displej zobrazí `Ziadne senzory!`.
-- **Restart** — v PAUZA vyberte túto položku a stlačte enkodér. Zariadenie synchronizuje súborový systém a reštartuje Pico, čím znovu spustí aplikáciu. Počas REC nie je táto voľba dostupná.
-- **SyncRTC** — synchronizuje externý RTC DS3231 s aktuálnym časom interného RTC Raspberry Pi Pico.
+| Režim / položka menu | Popis |
+|---|---|
+| **PAUZA** | zariadenie vykonáva merania a zobrazuje aktuálne hodnoty, ale nezapisuje ich na SD kartu. Enkodérom je možné zvoliť režim alebo interval záznamu. |
+| **REC** | namerané údaje sa ukladajú na SD kartu v nastavenom intervale. Pre každý záznam sa vytvorí nový CSV súbor s názvom `YYYYMMDD_HHMMSS.csv`. |
+| **ADS1256** | Rozšírenie počtu a presnosti analógových vstupov pomocou externého 24-bitového A/D prevodníka: namiesto dvoch pôvodných analógových vstupov umožňuje merať osem kanálov AN0–AN7. V PAUZA možno zapnúť alebo vypnúť modul a nastaviť priemerovanie. |
+| **1WIRE** | umožňuje prechádzať pripojené DS18B20 senzory a zobrazovať ich ROM ID a aktuálnu teplotu. Otočením enkodéra sa vyberá senzor, stlačením sa vrátite do PAUZA. Ak sa žiadny senzor nenájde, displej zobrazí `Ziadne senzory!`. |
+| **Restart** | v PAUZA vyberte túto položku a stlačte enkodér. Zariadenie synchronizuje súborový systém a reštartuje Pico, čím znovu spustí aplikáciu. Počas REC nie je táto voľba dostupná. |
+| **SyncRTC** | synchronizuje externý RTC DS3231 s aktuálnym časom interného RTC Raspberry Pi Pico. |
 
 V PAUZA sa otočením enkodéra vyberá **Restart → SyncRTC → ADS1256 →
 1WIRE → 5 až 300 s**. Stlačením sa otvorí zvolená položka alebo spustí
