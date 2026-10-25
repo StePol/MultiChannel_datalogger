@@ -65,7 +65,7 @@ Dokumentácia hardvéru a KiCad projektu je v
 | **ADS1256** | Rozšírenie počtu a presnosti analógových vstupov pomocou externého 24-bitového A/D prevodníka: namiesto dvoch pôvodných analógových vstupov umožňuje merať osem kanálov AN0–AN7. V PAUZA možno zapnúť alebo vypnúť modul a nastaviť priemerovanie. |
 | **1WIRE** | umožňuje prechádzať pripojené DS18B20 senzory a zobrazovať ich ROM ID a aktuálnu teplotu. Otočením enkodéra sa vyberá senzor, stlačením sa vrátite do PAUZA. Ak sa žiadny senzor nenájde, displej zobrazí `Ziadne senzory!`. |
 | **Restart** | v PAUZA vyberte túto položku a stlačte enkodér. Zariadenie synchronizuje súborový systém a reštartuje Pico, čím znovu spustí aplikáciu. Počas REC nie je táto voľba dostupná. |
-| **SyncRTC** | synchronizuje externý RTC DS3231 s aktuálnym časom interného RTC Raspberry Pi Pico. |
+| **SyncRTC** | Zapíše aktuálny interný čas Pico do externého RTC DS3231. Čas z PC sa prenesie iba vtedy, ak bol predtým skutočne nastavený do interných hodín Pico; samotné pripojenie USB nestačí. |
 
 V PAUZA sa otočením enkodéra vyberá **Restart → SyncRTC → ADS1256 →
 1WIRE → 5 až 300 s**. Stlačením sa otvorí zvolená položka alebo spustí
@@ -74,6 +74,36 @@ Počas REC sa stlačením enkodéra záznam zastaví a zariadenie sa vráti do P
 
 Podrobný popis ovládania a režimov je v
 [`firmware/README.md`](firmware/README.md).
+
+### SyncRTC – podmienky synchronizácie s PC
+
+V **PAUZA** vyberte **SyncRTC** a stlačte enkodér. Aplikácia prečíta
+interný čas Pico cez `time.localtime()` a zapíše ho do DS3231. Pri úspechu
+zobrazí **OK!** a čas, pri chybe **SYNC CHYBA!**; približne po dvoch
+sekundách sa vráti do PAUZA. Počas REC nie je položka dostupná.
+
+**Aby sa do DS3231 dostal čas PC, interné hodiny Pico už musia obsahovať
+správny čas prenesený z PC.** Čas a časové pásmo na PC musia byť správne,
+Pico musí byť pripojené cez USB a použitý nástroj musí nastavenie času
+skutočne vykonať. Samotné pripojenie USB ani otvorenie Thonny nestačí.
+DS3231 musí byť dostupný na I2C0 (GP8/GP9, adresa `0x68`).
+
+Pri štarte `main.py` sa čas prenáša opačným smerom: **DS3231 → interné
+hodiny Pico**. Ak teda nástroj nastaví čas PC ešte pred spustením
+`main.py`, aplikácia ho pri štarte môže prepísať starším časom DS3231.
+Ani položka **Restart** nepreberá nový čas z PC.
+
+Na samostatné nastavenie možno použiť [`TimeSyncPC.py`](firmware/TimeSyncPC.py):
+zastavte záznam v PAUZA a potom aplikáciu v Thonny, nastavte interné hodiny
+Pico z PC pomocou nástroja, ktorý tento prenos podporuje, a overte ich čas.
+Následne spustite `TimeSyncPC.py` bez medzikroku so spustením `main.py`
+alebo resetom Pico. Skript prenesie interný čas do DS3231; až potom znovu
+spustite aplikáciu. Aj tento skript predpokladá už nastavené interné hodiny,
+sám čas z PC nezískava.
+
+Hlásenie `RTC zosynchronizovany s PC!` v aktuálnom firmvéri potvrdzuje
+vykonanie zápisu, nie overenie času voči PC. Automatická kontrola správnosti
+času ani zmena letného/zimného času nie sú v tejto funkcii implementované.
 
 ### ADS1256 – výber vstupov a priemerovanie
 
