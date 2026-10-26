@@ -180,8 +180,8 @@ použije **Off** a **1 vzorka**. Pri chybe uloženia sa zobrazí
 `Ulozenie CHYBA`; voľba platí v pamäti RAM, ale uloženie treba zopakovať.
 
 Podrobné ovládanie, aktualizácia firmvéru a oba CSV formáty sú vo
-[`firmware/README.md`](firmware/README.md). Tabuľka GPIO vyššie a CSV
-hlavička nižšie opisujú pôvodné vstupy, teda **ADS1256 Off**.
+[`firmware/README.md`](firmware/README.md). Tabuľka GPIO vyššie opisuje pôvodné vstupy, teda
+**ADS1256 Off**. Oba CSV formáty sú uvedené nižšie.
 
 ## 💾 Formát dát (CSV)
 
@@ -189,13 +189,44 @@ Pri spustení režimu **REC** sa vytvorí nový CSV súbor s názvom odvodeným
 od aktuálneho dátumu a času. Do rovnakého súboru sa zapisuje až do
 ukončenia režimu REC.
 
-Pevná časť CSV hlavičky je:
+Formát sa riadi potvrdenou voľbou **ADS1256 On/Off**, nie samotným
+fyzickým pripojením modulu. Vstupný režim sa mení iba v PAUZA;
+po zmene sa pri ďalšom spustení REC vytvorí nový súbor so zodpovedajúcou
+hlavičkou. Existujúce súbory sa neprepisujú na nový formát.
+
+### Pôvodné vstupy – ADS1256 Off
 
 ```text
 Cas,SHT_T,SHT_H,A1,A2,BAT,BIN,B1,B2,B3,B4
 ```
-Za ňou firmware pridá ROM ID jednotlivých detegovaných DS18B20 senzorov
-ako ďalšie stĺpce.
+
+### Osem analógových vstupov – ADS1256 On
+
+```text
+Cas,SHT_T,SHT_H,AN0,AN1,AN2,AN3,AN4,AN5,AN6,AN7,BAT
+```
+
+| Údaj | ADS1256 Off | ADS1256 On |
+|---|---|---|
+| Analógové vstupy | `A1`, `A2`, napätie vo V na 2 desatinné miesta | `AN0` až `AN7`, napätie vo V na 6 desatinných miest |
+| Binárne vstupy | `BIN` a samostatné `B1` až `B4` | Tieto stĺpce sa nezapisujú |
+| Batéria | `BAT`, napätie vo V na 2 desatinné miesta | Rovnaký údaj, nasleduje za `AN7` |
+| Čas a prostredie | `Cas` (`HH:MM:SS`), `SHT_T` (°C, 2 desatinné miesta), `SHT_H` (%, 1 desatinné miesto) | Bez zmeny |
+| DS18B20 | Ďalšie stĺpce pomenované ROM ID senzorov, hodnoty v °C | Bez zmeny |
+
+Pri **ADS1256 On** sa meria osem kanálov voči AINCOM. Hodnoty
+`AN0`–`AN7` sú aritmetickým priemerom nastaveného počtu čerstvých vzoriek
+na kanál (1, 2, 4, 8, 16 alebo 32). Počet vzoriek sa do CSV nezapisuje.
+Šesť desatinných miest určuje formát zápisu, nie zaručenú presnosť merania.
+Pri chybe merania ADS1256 sa zapíše osem prázdnych polí; nenahrádzajú sa
+nulami ani poslednými platnými hodnotami.
+
+Za pevnú časť hlavičky firmware v oboch režimoch pridá ROM ID jednotlivých
+detegovaných DS18B20 senzorov ako ďalšie stĺpce. Oddeľovačom je čiarka,
+desatinným oddeľovačom bodka. Pri importe do tabuľkového programu vyberte
+formát podľa hlavičky konkrétneho súboru; počet aj pozície stĺpcov sa medzi
+režimami líšia.
+
 Príklad nameraných dát je v adresári [`docs/data/`](docs/data/).
 
 ## 🛡 Stabilita záznamu
