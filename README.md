@@ -93,13 +93,63 @@ hodiny Pico**. Ak teda nástroj nastaví čas PC ešte pred spustením
 `main.py`, aplikácia ho pri štarte môže prepísať starším časom DS3231.
 Ani položka **Restart** nepreberá nový čas z PC.
 
-Na samostatné nastavenie možno použiť [`TimeSyncPC.py`](firmware/TimeSyncPC.py):
-zastavte záznam v PAUZA a potom aplikáciu v Thonny, nastavte interné hodiny
-Pico z PC pomocou nástroja, ktorý tento prenos podporuje, a overte ich čas.
-Následne spustite `TimeSyncPC.py` bez medzikroku so spustením `main.py`
-alebo resetom Pico. Skript prenesie interný čas do DS3231; až potom znovu
-spustite aplikáciu. Aj tento skript predpokladá už nastavené interné hodiny,
-sám čas z PC nezískava.
+#### Nastavenie času z PC cez terminál Zedu (Linux)
+
+Postup používa `mpremote` nainštalovaný v projektovom `.venv` a lokálny
+skript [`firmware/TimeSyncPC.py`](firmware/TimeSyncPC.py). Terminál otvorte
+v koreňovom priečinku repozitára. Rovnaké príkazy možno spustiť aj v bežnom
+termináli bez Zedu.
+
+1. Pripojte Pico cez USB a na zariadení **zastavte záznam do PAUZA**.
+   Zatvorte Thonny aj ostatné pripojenia k sériovému portu. Nasledujúce
+   príkazy prerušia aplikáciu; samy nekontrolujú, či je zariadenie v PAUZA.
+2. Skontrolujte dátum, miestny čas a časové pásmo PC:
+
+   ```bash
+   date '+%Y-%m-%d %H:%M:%S %Z %z'
+   ```
+
+3. Zistite port Pico:
+
+   ```bash
+   .venv/bin/mpremote connect list
+   ```
+
+   V príkazoch nižšie nahraďte `/dev/ttyACM0` skutočným portom.
+4. Preneste čas PC do interných hodín Pico, zapíšte ho do DS3231 a hneď
+   prečítajte uloženú hodnotu:
+
+   ```bash
+   .venv/bin/mpremote connect /dev/ttyACM0 resume rtc --set run firmware/TimeSyncPC.py exec "print('DS3231:', rtc_ext.get_time())"
+   ```
+
+   `rtc --set` nastaví interné hodiny podľa miestneho času PC.
+   `TimeSyncPC.py` následne prenesie tento čas do DS3231; samotný skript
+   čas z PC nezískava. `resume` potlačí automatický soft reset a operácie
+   prebehnú v jednom spojení bez spustenia `main.py` medzi nimi.
+5. Porovnajte výpis `DS3231:` s aktuálnym časom PC. Poradie hodnôt je
+   **rok, mesiac, deň, hodina, minúta, sekunda, deň v týždni**
+   (0 = pondelok). Príklad z vykonaného nastavenia:
+
+   ```text
+   Aktuálny čas: 01:01:51
+   DS3231: (2026, 10, 26, 1, 1, 51, 0)
+   ```
+
+   Spätné čítanie potvrdzuje zápis do DS3231; zhodu s PC skontrolujte
+   samostatne, s prihliadnutím na čas medzi príkazmi.
+6. Ak čas súhlasí, reštartujte aplikáciu:
+
+   ```bash
+   .venv/bin/mpremote connect /dev/ttyACM0 reset
+   ```
+
+   Pri štarte datalogger načíta čas z DS3231. Skontrolujte ho na displeji.
+
+Prenos času a spätné čítanie DS3231 boli používateľom vykonané
+26. 10. 2026 po zistení hodinového rozdielu pri zmene času.
+**Prechod medzi letným a zimným časom sa nevykonáva automaticky**;
+po zmene času zopakujte synchronizáciu z PC so správnym miestnym časom.
 
 Hlásenie `RTC zosynchronizovany s PC!` v aktuálnom firmvéri potvrdzuje
 vykonanie zápisu, nie overenie času voči PC. Automatická kontrola správnosti
