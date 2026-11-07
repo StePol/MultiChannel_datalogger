@@ -19,13 +19,21 @@ print("[BUILD INFO] version={} git={} build={}{}".format(
 # True = ADS1256 AN0–AN7; False = pôvodné A1/A2 a B1–B4.
 from input_settings import load_input_mode, save_input_mode
 from input_settings import load_sample_count, save_sample_count, SAMPLE_OPTIONS
+from input_settings import load_raw_mode, save_raw_mode, load_buffer_mode, save_buffer_mode
+from input_settings import load_divider, save_divider
+from adc_divider import DividerMenu, divider_label, divider_factor, measurement_range
+from adc_divider import scale_values, voltage_label
+ads_divider = load_divider()
+ads_raw = load_raw_mode()
+ads_buffer = load_buffer_mode()
 ADS1256_ENABLED = load_input_mode()
 ADS1256_VREF = 2.503  # Skutočne nameraná referencia modulu [V]
+ADS1256_AVDD = 5.0  # Nominálne napájanie pre odhad rozsahu, nie meraná hodnota.
 ADS1256_SCAN_MS = 1000
 ADS1256_SAMPLE_OPTIONS = SAMPLE_OPTIONS
 ads_samples = load_sample_count()  # Bez platného nastavenia 1 = bez priemerovania
 from adc_average import ADCAverage
-ads_average = ADCAverage(ads_samples)
+ads_average = ADCAverage(ads_samples, raw=ads_raw)
 ads_collecting = False
 
 TLACITKO_PIN = machine.Pin(15, machine.Pin.IN, machine.Pin.PULL_UP)
@@ -52,14 +60,15 @@ def set_input_mode(enabled):
         machine.Pin(gpio, machine.Pin.IN)
     ads_values = None
     ads_error = ""
-    ads_average = ADCAverage(ads_samples)
+    ads_average = ADCAverage(ads_samples, raw=ads_raw)
     ads_collecting = False
     ADS1256_ENABLED = enabled
     if enabled:
         try:
             from ads1256 import ADS1256
-            ads = ADS1256(vref=ADS1256_VREF)
-            print("Vstupy: ADS1256 AN0-AN7, VREF={} V, PGA=1, 100 SPS, SELFCAL OK".format(ADS1256_VREF))
+            ads = ADS1256(vref=ADS1256_VREF, buffer_enabled=ads_buffer)
+            print("Vstupy: ADS1256 AN0-AN7, VREF={} V, PGA=1, 100 SPS, buffer={}, RAW={}, SELFCAL OK".format(
+                ADS1256_VREF, ads_buffer, ads_raw))
         except Exception as e:
             ads_error = str(e)
             print("ADS1256 INIT CHYBA:", e)
@@ -153,6 +162,7 @@ test_index = 0
 ads_menu_choice = 0 if ADS1256_ENABLED else 1
 settings_error = False
 ads_sample_choice = 0
+divider_menu = None
 last_btn = 1
 posledny_prevod_ds = 0
 filename = ""
@@ -163,6 +173,92 @@ posledny_zapis_ms = time.ticks_ms()
 loop_timer = time.ticks_ms()
 sd_check_timer = time.ticks_ms()
 SD_CHECK_INTERVAL = 5000  # Kontrola SD karty každých 5 sekúnd
+
+# USB konzola: čítanie iba v hlavnej slučke, nikdy v IRQ.
+from serial_commands import SerialCommands, HELP_LINES, configuration_lines
+serial_console = SerialCommands()
+
+
+def start_recording(source="SERIAL", refresh=True):
+    global mode, filename, posledny_zapis_ms, roms, ds_v
+    if mode == "REC":
+        print("[OK] START already REC file={}".format(filename))
+        return
+    if mode != "PAUZA":
+        print("[ERR] START mode={}; najprv opustite menu/TEST/SYNC".format(mode))
+        return
+    # IRQ nesmie medzi validáciou intervalu a prepnutím zmeniť výber.
+    mode = "ADC_SWITCH"
+    if interval not in range(5, 301, 5):
+        mode = "PAUZA"
+        print("[ERR] START vyberte interval 5-300 s v menu PAUZA")
+        return
+    try:
+        if refresh:
+            roms = ds_sensor.scan()
+            ds_v = [0.0] * len(roms)
+        candidate = new_recording_filename(time.localtime())
+    except Exception as e:
+        mode = "PAUZA"
+        print("[ERR] START {}".format(e))
+        return
+    filename = candidate
+    posledny_zapis_ms = time.ticks_ms()
+    mode = "REC"
+    print("[OK] START mode=REC source={} interval={}s file={} sd={}".format(
+        source, interval, filename, "OK" if sd_ready else "NOT_READY"))
+
+
+def stop_recording(source="SERIAL"):
+    global mode
+    if mode == "REC":
+        # Každý zápis už uzatvára a synchronizuje súbor. Nemeníme konfiguráciu.
+        mode = "PAUZA"
+        print("[OK] STOP mode=PAUZA source={} file={}".format(source, filename))
+    else:
+        print("[OK] STOP already stopped mode={}".format(mode))
+
+
+def serial_status():
+    state = dict(version=BUILD_VERSION, sha=BUILD_GIT_SHA, build=BUILD_NUMBER,
+                 dirty=BUILD_DIRTY, mode=mode, interval=interval, sd=sd_ready,
+                 ds=len(roms), filename=filename, ads_enabled=ADS1256_ENABLED,
+                 raw=ads_raw, samples=ads_samples, buffer=ads_buffer,
+                 divider=ads_divider, vref=ADS1256_VREF, avdd=ADS1256_AVDD,
+                 values_ready=ads_values is not None, ads_error=ads_error,
+                 settings_error=settings_error)
+    for line in configuration_lines(state):
+        print(line)
+
+
+def handle_serial_command(command):
+    if command == "START":
+        start_recording()
+    elif command == "STOP":
+        stop_recording()
+    elif command == "RESET":
+        if mode != "PAUZA":
+            print("[ERR] RESET iba v PAUZA; pouzite STOP a opustite menu")
+            return
+        try:
+            uos.sync()
+        except OSError as e:
+            print("[ERR] RESET sync failed: {}".format(e))
+            return
+        print("[OK] RESET restarting firmware")
+        machine.reset()
+    elif command == "STATUS":
+        serial_status()
+    elif command == "HELP":
+        for line in HELP_LINES:
+            print(line)
+    elif command.startswith("!"):
+        print("[ERR] {} limit=32 chars; pouzite HELP".format(command[1:]))
+    else:
+        print("[ERR] Neznamy prikaz; pouzite HELP")
+
+
+print("[STATE] mode=PAUZA; serial: START STOP STATUS HELP RESET")
 
 # --- ENKODÉR CEZ PRERUŠENIA ---
 last_clk_state = pin_clk.value()
@@ -195,7 +291,10 @@ def encoder_handler(pin):
 
         elif mode == "ADC_MENU":
             # Otáčanie iba vyberá; stlačenie potvrdí v hlavnej slučke.
-            ads_menu_choice = max(0, min(3, ads_menu_choice + direction))
+            ads_menu_choice = max(0, min(6, ads_menu_choice + direction))
+
+        elif mode == "ADC_DIVIDER":
+            divider_menu.turn(direction)
 
         elif mode == "ADC_SAMPLES":
             ads_sample_choice = max(0, min(len(ADS1256_SAMPLE_OPTIONS) - 1,
@@ -257,16 +356,34 @@ while True:
                 # Prechod do TEST módu
                 mode = "TEST"; test_index = 0
             else:
-                # Prechod do REC módu — vytvorí nový súbor s časovou pečiatkou
-                mode = "REC"
-                posledny_zapis_ms = time.ticks_ms()
-                filename = new_recording_filename(lt)
+                start_recording("BUTTON", refresh=False)
         elif mode == "ADC_MENU":
             choice = ads_menu_choice
             if choice == 2:
                 ads_sample_choice = ADS1256_SAMPLE_OPTIONS.index(ads_samples)
                 mode = "ADC_SAMPLES"
-            elif choice == 3:
+            elif choice in (3, 4):
+                mode = "ADC_SWITCH"
+                if choice == 3:
+                    ads_raw = not ads_raw
+                else:
+                    ads_buffer = not ads_buffer
+                # Reinitialization discards old values and any unfinished batch.
+                set_input_mode(ADS1256_ENABLED)
+                try:
+                    if choice == 3:
+                        save_raw_mode(ads_raw)
+                    else:
+                        save_buffer_mode(ads_buffer)
+                    settings_error = False
+                except OSError as e:
+                    print("ADS NASTAVENIE ULOZENIE CHYBA:", e)
+                    settings_error = True
+                mode = "ADC_MENU"
+            elif choice == 5:
+                divider_menu = DividerMenu(ads_divider)
+                mode = "ADC_DIVIDER"
+            elif choice == 6:
                 mode = "PAUZA"
             else:
                 mode = "ADC_SWITCH"
@@ -279,10 +396,36 @@ while True:
                     print("NASTAVENIE ULOZENIE CHYBA:", e)
                     settings_error = True
                     mode = "ADC_MENU"
+        elif mode == "ADC_DIVIDER":
+            mode = "ADC_SWITCH"
+            action = divider_menu.press()
+            if action == "apply":
+                mode = "ADC_SWITCH"
+                ads_divider = divider_menu.config
+                # No old result or unfinished batch may survive a scale change.
+                ads_average = ADCAverage(ads_samples, raw=ads_raw)
+                ads_collecting = False
+                ads_values = None
+                ads_scan_timer = time.ticks_add(time.ticks_ms(), -ADS1256_SCAN_MS)
+                try:
+                    save_divider(ads_divider)
+                    settings_error = False
+                except OSError as e:
+                    print("DELIC ULOZENIE CHYBA:", e)
+                    settings_error = True
+                print("ADS1256 {} K={} rozsah=0-{} V".format(
+                    divider_label(ads_divider, ads_buffer),
+                    divider_factor(ads_divider, ads_buffer),
+                    measurement_range(ads_divider, ads_buffer, ADS1256_AVDD, ADS1256_VREF)))
+                mode = "ADC_MENU"
+            elif action == "cancel":
+                mode = "ADC_MENU"
+            else:
+                mode = "ADC_DIVIDER"
         elif mode == "ADC_SAMPLES":
             mode = "ADC_SWITCH"
             ads_samples = ADS1256_SAMPLE_OPTIONS[ads_sample_choice]
-            ads_average = ADCAverage(ads_samples)
+            ads_average = ADCAverage(ads_samples, raw=ads_raw)
             ads_collecting = False
             ads_values = None  # Nemiešať výsledky starého a nového nastavenia.
             ads_scan_timer = time.ticks_add(time.ticks_ms(), -ADS1256_SCAN_MS)
@@ -294,10 +437,17 @@ while True:
                 print("VZORKY ULOZENIE CHYBA:", e)
                 settings_error = True
             mode = "ADC_MENU"
+        elif mode == "REC":
+            stop_recording("BUTTON")
         else:
             mode = "PAUZA"
         LED_EXT.value(1); time.sleep_ms(100); LED_EXT.value(0)
     last_btn = curr_btn
+
+    # Najviac jeden príkaz/64 znakov za slučku; nečakáme na koniec riadka.
+    command = serial_console.read_command()
+    if command is not None:
+        handle_serial_command(command)
 
     # 4. MERANIE
     try: st, sh = senzor_sht.measurements()
@@ -315,13 +465,13 @@ while True:
                 # Jeden čerstvý prevod na slučku; tlačidlo zostáva obsluhované.
                 result = ads_average.step(ads)
                 if result is not None:
-                    ads_values = result
+                    ads_values = scale_values(result, ads_raw, ads_divider, ads_buffer)
                     ads_error = ""
                     ads_collecting = False
                     ads_scan_timer = time.ticks_ms()
             except Exception as e:
                 ads_values = None
-                ads_average = ADCAverage(ads_samples)
+                ads_average = ADCAverage(ads_samples, raw=ads_raw)
                 ads_collecting = False
                 ads_error = str(e)
                 print("ADS1256 MERANIE CHYBA:", e)
@@ -341,7 +491,7 @@ while True:
     # 5. DISPLEJ A LOGIKA ZÁPISU
     oled.fill(0)
     # Podmenu má vlastný nadpis cez celý riadok; čas patrí na hlavné obrazovky.
-    if mode not in ("ADC_MENU", "ADC_SAMPLES"):
+    if mode not in ("ADC_MENU", "ADC_SAMPLES", "ADC_DIVIDER"):
         oled.text(cas_s, 64, 0)
 
     if mode == "PAUZA":
@@ -357,15 +507,24 @@ while True:
     elif mode == "ADC_MENU":
         oled.text("Ulozenie CHYBA" if settings_error else
                   "ADS1256 " + ("On" if ADS1256_ENABLED else "Off"), 0, 0)
-        for index, label in enumerate(("On", "Off", "Vzorky: {}".format(ads_samples), "Spat")):
-            # Šípka = výber enkodérom, [AKT] = aktuálne použitý režim.
+        labels = ("On", "Off", "Vzorky: {}".format(ads_samples),
+                  "RAW: " + ("On" if ads_raw else "Off"),
+                  "Imp:" + ("Hi(3V)" if ads_buffer else "Lo(5V)"),
+                  divider_label(ads_divider, ads_buffer), "Spat")
+        first = max(0, ads_menu_choice - 3)
+        for row, index in enumerate(range(first, min(first + 4, len(labels)))):
             active = (index == 0 and ADS1256_ENABLED) or (index == 1 and not ADS1256_ENABLED)
-            oled.text(("> " if index == ads_menu_choice else "  ") + label +
-                      (" [AKT]" if active else ""), 0, 14 + index * 12)
+            oled.text(("> " if index == ads_menu_choice else "  ") + labels[index] +
+                      (" [AKT]" if active else ""), 0, 14 + row * 12)
+
+    elif mode == "ADC_DIVIDER":
+        divider_menu.draw(oled, ads_buffer, ADS1256_AVDD, ADS1256_VREF)
 
     elif mode == "ADC_SAMPLES":
         oled.text("ADS1256 Vzorky", 0, 0)
         oled.text("N: {} / kanal".format(ADS1256_SAMPLE_OPTIONS[ads_sample_choice]), 0, 20)
+        if ads_raw:
+            oled.text("RAW pouziva N=1", 0, 32)
         oled.text("Stlac = potvrdit", 0, 42)
 
     elif mode == "SYNC":
@@ -437,7 +596,7 @@ while True:
                             [ubinascii.hexlify(r).decode() for r in roms], ds_v,
                             ADS1256_ENABLED, ads_values,
                             None if ADS1256_ENABLED else (v1, v2),
-                            None if ADS1256_ENABLED else bin_s)
+                            None if ADS1256_ENABLED else bin_s, ads_raw=ads_raw)
                         if not subor_existuje:
                             f.write(header)
                             print("-> Vytvorena hlavicka s ID.")
@@ -453,14 +612,15 @@ while True:
             posledny_zapis_ms = time.ticks_ms()
 
     # 6. SPODNÝ RIADOK DISPLEJA — merania (nie v TEST a SYNC móde)
-    if mode not in ("TEST", "SYNC", "ADC_MENU", "ADC_SAMPLES"):
+    if mode not in ("TEST", "SYNC", "ADC_MENU", "ADC_SAMPLES", "ADC_DIVIDER"):
         oled.text("SHT: {:.1f}C {:.0f}%".format(st, sh), 0, 24)
         if ADS1256_ENABLED:
             if ads_values is None:
                 oled.text("ADS1256 CHYBA" if ads_error else "ADS meranie...", 0, 34)
             else:
                 ch = (time.ticks_ms() // 2000) % 8
-                oled.text("AN{}: {:.6f}V".format(ch, ads_values[ch]), 0, 34)
+                oled.text(("RAW{}: {}".format(ch, int(ads_values[ch])) if ads_raw else
+                           voltage_label(ch, ads_values[ch])), 0, 34)
             oled.text("DS: {}".format(len(roms)), 0, 44)
         else:
             oled.text("ADC: {:.2f}V {:.2f}V".format(v1, v2), 0, 34)

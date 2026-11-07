@@ -34,6 +34,17 @@ class AverageTests(unittest.TestCase):
         self.assertEqual(results[15], [ch + 0.5 for ch in range(8)])
         self.assertEqual(results[31], [ch + 2.5 for ch in range(8)])
 
+    def test_raw_publishes_direct_codes_without_averaging(self):
+        from types import SimpleNamespace
+        codes = [-8388608, -1, 0, 1, 2, 100, 8388606, 8388607]
+        source = SimpleNamespace(read_raw_channel=lambda ch: codes[ch])
+        avg = ADCAverage(32, raw=True)
+        for _ in range(7):
+            self.assertIsNone(avg.step(source))
+        result = avg.step(source)
+        self.assertEqual(result, codes)
+        self.assertTrue(all(type(v) is int for v in result))
+
     def test_invalid_count(self):
         for count in (0, -1, 3, 100):
             with self.assertRaises(ValueError):

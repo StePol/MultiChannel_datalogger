@@ -2,7 +2,12 @@
 import ast
 import types
 import unittest
+import sys
 from pathlib import Path
+
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from adc_divider import voltage_label
 
 
 class MeasurementDisplayTests(unittest.TestCase):
@@ -24,8 +29,9 @@ class MeasurementDisplayTests(unittest.TestCase):
     def draw(self, values, error=False, ticks=0, count=3):
         rows = []
         context = {
+            "voltage_label": voltage_label,
             "oled": types.SimpleNamespace(text=lambda *args: rows.append(args)),
-            "ADS1256_ENABLED": True, "ads_values": values, "ads_error": error,
+            "ADS1256_ENABLED": True, "ads_raw": False, "ads_values": values, "ads_error": error,
             "roms": [None] * count,
             "time": types.SimpleNamespace(ticks_ms=lambda: ticks),
         }

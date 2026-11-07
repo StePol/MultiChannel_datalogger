@@ -1,0 +1,4 @@
+# Editor-only type definitions for the tested MicroPython 1.27.0 on RP2040.
+# Install with --target work/micropython-stubs, not onto the Pico.
+micropython-rp2-rpi-pico-stubs==1.27.0.post1
+micropython-stdlib-stubs==1.27.0.post2

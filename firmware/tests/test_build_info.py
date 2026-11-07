@@ -60,6 +60,16 @@ class BuildInfoTests(unittest.TestCase):
         (self.root / "firmware/new_driver.py").write_text("pass\n")
         self.assertTrue(builder.metadata(self.root)[3])
 
+    def test_explicit_development_version_preserves_git_identity(self):
+        output = builder.prepare(self.root, "1.0.5-dev")
+        data = {}
+        exec((output / "build_info.py").read_text(), data)
+        self.assertEqual(data["BUILD_VERSION"], "1.0.5-dev")
+        self.assertEqual(data["BUILD_GIT_SHA"], builder.metadata(self.root)[1])
+        for invalid in ("1.0.5", "garbage", "1.05.0-dev"):
+            with self.assertRaises(ValueError):
+                builder.prepare(self.root, invalid)
+
     def test_without_git_fails(self):
         with tempfile.TemporaryDirectory() as path:
             with self.assertRaises(subprocess.CalledProcessError):

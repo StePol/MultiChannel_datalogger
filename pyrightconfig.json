@@ -1,0 +1,15 @@
+{
+  "include": ["firmware"],
+  "exclude": ["firmware/tests", "tools", ".venv", "work", "**/__pycache__"],
+  "typeCheckingMode": "standard",
+  "reportMissingModuleSource": false,
+  "stubPath": "work/micropython-stubs",
+  "venvPath": ".",
+  "venv": ".venv",
+  "executionEnvironments": [
+    {
+      "root": "firmware",
+      "extraPaths": ["work/firmware"]
+    }
+  ]
+}

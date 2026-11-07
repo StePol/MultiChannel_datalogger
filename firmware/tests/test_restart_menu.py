@@ -17,7 +17,9 @@ class RestartMenuTests(unittest.TestCase):
                       and "last_btn" in ast.unparse(node.test))
         cls.encoder_code = compile(ast.Module(body=[encoder], type_ignores=[]),
                                    "encoder_handler", "exec")
-        cls.button_code = compile(ast.Module(body=[button], type_ignores=[]),
+        stop = next(node for node in tree.body
+                    if isinstance(node, ast.FunctionDef) and node.name == "stop_recording")
+        cls.button_code = compile(ast.Module(body=[stop, button], type_ignores=[]),
                                   "button handler", "exec")
 
     def test_restart_is_first_and_navigation_is_disabled_during_rec(self):
@@ -47,7 +49,7 @@ class RestartMenuTests(unittest.TestCase):
             with self.subTest(mode=mode):
                 events = []
                 context = {
-                    "mode": mode, "interval": -3, "last_btn": 1, "curr_btn": 0,
+                    "mode": mode, "filename": "", "interval": -3, "last_btn": 1, "curr_btn": 0,
                     "time": types.SimpleNamespace(sleep_ms=lambda ms: None),
                     "ds_sensor": types.SimpleNamespace(scan=lambda: []),
                     "LED_EXT": types.SimpleNamespace(value=lambda value: None),
@@ -88,6 +90,46 @@ class RestartMenuTests(unittest.TestCase):
                     self.assertEqual(context["settings_error"], fail_save)
                     self.assertEqual(context["mode"], "ADC_MENU" if fail_save else "PAUZA")
 
+    def test_raw_and_buffer_switch_reset_batch_and_save_only_selected_setting(self):
+        from adc_average import ADCAverage
+        tree = ast.parse((Path(__file__).resolve().parents[1] / "main.py").read_text())
+        setup = next(node for node in tree.body
+                     if isinstance(node, ast.FunctionDef) and node.name == "set_input_mode")
+        setup_code = compile(ast.Module(body=[setup], type_ignores=[]), "set_input_mode", "exec")
+        for choice in (3, 4):
+            for fail in (False, True):
+                saved = []
+                def save(name, value):
+                    saved.append((name, value))
+                    if fail:
+                        raise OSError("flash failure")
+                context = {
+                    "mode": "ADC_MENU", "ads_menu_choice": choice,
+                    "last_btn": 1, "curr_btn": 0,
+                    "ads_raw": False, "ads_buffer": False, "ADS1256_ENABLED": False,
+                    "ads": None, "ads_values": [1] * 8, "ads_collecting": True,
+                    "ads_samples": 32, "ADCAverage": ADCAverage, "ADS1256_SCAN_MS": 1000,
+                    "save_raw_mode": lambda value: save("raw", value),
+                    "save_buffer_mode": lambda value: save("buffer", value),
+                    "time": types.SimpleNamespace(sleep_ms=lambda ms: None, ticks_ms=lambda: 5000,
+                                                  ticks_add=lambda a, b: a + b),
+                    "LED_EXT": types.SimpleNamespace(value=lambda value: None),
+                    "machine": types.SimpleNamespace(Pin=type("Pin", (), {
+                        "IN": 0, "PULL_UP": 1, "__init__": lambda self, *args: None}),
+                        ADC=lambda channel: channel),
+                }
+                exec(setup_code, context)
+                exec(self.button_code, context)
+                self.assertEqual(saved, [("raw" if choice == 3 else "buffer", True)])
+                self.assertEqual(context["ads_raw"], choice == 3)
+                self.assertEqual(context["ads_buffer"], choice == 4)
+                self.assertIsNone(context["ads_values"])
+                self.assertFalse(context["ads_collecting"])
+                self.assertEqual(context["ads_average"].samples, 1 if choice == 3 else 32)
+                self.assertEqual(context["ads_samples"], 32)
+                self.assertEqual(context["settings_error"], fail)
+                self.assertEqual(context["mode"], "ADC_MENU")
+
     def test_sample_confirmation_saves_and_discards_unfinished_batch(self):
         for fail_save in (False, True):
             with self.subTest(fail_save=fail_save):
@@ -99,9 +141,9 @@ class RestartMenuTests(unittest.TestCase):
                 context = {
                     "mode": "ADC_SAMPLES", "last_btn": 1, "curr_btn": 0,
                     "ADS1256_SAMPLE_OPTIONS": (1, 2, 4, 8, 16, 32),
-                    "ads_sample_choice": 3, "ads_samples": 1,
+                    "ads_sample_choice": 3, "ads_samples": 1, "ads_raw": False,
                     "ads_values": [1] * 8, "ads_collecting": True,
-                    "ADCAverage": lambda count: ("new batch", count),
+                    "ADCAverage": lambda count, raw=False: ("new batch", count),
                     "ADS1256_SCAN_MS": 1000,
                     "time": types.SimpleNamespace(sleep_ms=lambda ms: None,
                                                   ticks_ms=lambda: 5000,

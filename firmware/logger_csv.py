@@ -2,13 +2,13 @@
 
 
 def make_record(clock, temperature, humidity, battery, rom_ids, ds_values,
-                ads_enabled, ads_values=None, analog=None, binary=None):
+                ads_enabled, ads_values=None, analog=None, binary=None, ads_raw=False):
     header = ["Cas", "SHT_T", "SHT_H"]
     row = [clock, "{:.2f}".format(temperature), "{:.1f}".format(humidity)]
     if ads_enabled:
-        header += ["AN{}".format(i) for i in range(8)] + ["BAT"]
+        header += ["AN{}{}".format(i, "_RAW" if ads_raw else "") for i in range(8)] + ["BAT"]
         # A failed scan produces empty cells, never previous or fabricated values.
-        row += (["{:.6f}".format(v) for v in ads_values]
+        row += ([(str(int(v)) if ads_raw else "{:.6f}".format(v)) for v in ads_values]
                 if ads_values is not None else [""] * 8)
         row += ["{:.2f}".format(battery)]
     else:

@@ -1,14 +1,14 @@
 """ADS1256 on J3, manual SPI matching the tested 2 us diagnostic timing.
 
 TI SBAS288K: https://www.ti.com/lit/ds/symlink/ads1256.pdf
-Single-ended AIN0..AIN7 against AINCOM; buffer off, PGA=1, 100 SPS.
+Single-ended AIN0..AIN7 against AINCOM; selectable buffer, PGA=1, 100 SPS.
 """
 from machine import Pin
 import time
 
 
 class ADS1256:
-    def __init__(self, vref=2.503, timeout_ms=1000):
+    def __init__(self, vref=2.503, timeout_ms=1000, buffer_enabled=False):
         if vref <= 0:
             raise ValueError("VREF must be positive")
         self.vref = vref
@@ -27,8 +27,8 @@ class ADS1256:
         self._command(0x0F)  # SDATAC: explicit RDATA mode
         if self._read_reg(0) >> 4 != 3:
             raise OSError("ADS1256 CHIP ID != 3")
-        # STATUS: MSB first, buffer off, auto-calibration off.
-        for reg, value in ((0, 0x00), (1, 0x08), (2, 0x20), (3, 0x82)):
+        # STATUS: MSB first, selectable BUFEN, auto-calibration off.
+        for reg, value in ((0, 0x02 if buffer_enabled else 0x00), (1, 0x08), (2, 0x20), (3, 0x82)):
             self._write_reg(reg, value)
             # STATUS: kontrolujeme len ORDER/ACAL/BUFEN, nie živý bit DRDY.
             mask = 0x0E if reg == 0 else 0xFF
@@ -99,7 +99,7 @@ class ADS1256:
             self.cs.value(1)
             time.sleep_us(10)
 
-    def read_channel(self, channel):
+    def read_raw_channel(self, channel):
         if not 0 <= channel <= 7:
             raise ValueError("channel must be 0..7")
         self._wait_ready()
@@ -116,7 +116,10 @@ class ADS1256:
             self.cs.value(1)
         if raw & 0x800000:
             raw -= 0x1000000
-        return raw * (2 * self.vref / 0x7FFFFF)
+        return raw
+
+    def read_channel(self, channel):
+        return self.read_raw_channel(channel) * (2 * self.vref / 0x7FFFFF)
 
     def read_all(self):
         return [self.read_channel(channel) for channel in range(8)]

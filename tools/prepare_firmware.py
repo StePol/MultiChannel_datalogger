@@ -1,4 +1,5 @@
 """Prepare MicroPython files with Git metadata on the PC; never access a board."""
+import argparse
 import re
 import shutil
 import subprocess
@@ -27,9 +28,13 @@ def metadata(root):
     return version, sha, count, dirty
 
 
-def prepare(root):
+def prepare(root, version_override=None):
     root = Path(root).resolve()
     version, sha, count, dirty = metadata(root)
+    if version_override is not None:
+        if not re.fullmatch(r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)-dev", version_override):
+            raise ValueError("Explicit version must be X.Y.Z-dev; releases use Git tags")
+        version = version_override
     sources = sorted((root / "firmware").glob("*.py"))
     sources = [p for p in sources if p.name != "build_info.py"]
     if not any(p.name == "main.py" for p in sources):
@@ -56,7 +61,10 @@ def prepare(root):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--version", help="Explicit development version, e.g. 1.0.5-dev")
+    args = parser.parse_args()
     try:
-        prepare(Path(__file__).resolve().parents[1])
-    except (OSError, subprocess.CalledProcessError, RuntimeError) as error:
+        prepare(Path(__file__).resolve().parents[1], args.version)
+    except (OSError, subprocess.CalledProcessError, RuntimeError, ValueError) as error:
         raise SystemExit("Firmware preparation failed: {}".format(error))

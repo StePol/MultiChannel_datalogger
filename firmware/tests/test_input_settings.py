@@ -48,6 +48,20 @@ class InputSettingsTests(unittest.TestCase):
                 self.settings.save_input_mode(False, self.path)
         self.assertTrue(self.settings.load_input_mode(self.path))
 
+    def test_raw_and_buffer_settings_are_independent_and_default_off(self):
+        raw_path = str(Path(self.directory.name) / "raw.cfg")
+        buffer_path = str(Path(self.directory.name) / "buffer.cfg")
+        self.assertFalse(self.settings.load_raw_mode(raw_path))
+        self.assertFalse(self.settings.load_buffer_mode(buffer_path))
+        with patch.object(self.settings.os, "sync"):
+            self.settings.save_raw_mode(True, raw_path)
+            self.assertTrue(self.settings.load_raw_mode(raw_path))
+            self.assertFalse(self.settings.load_buffer_mode(buffer_path))
+            self.settings.save_buffer_mode(True, buffer_path)
+            self.settings.save_raw_mode(False, raw_path)
+            self.assertTrue(self.settings.load_buffer_mode(buffer_path))
+            self.assertFalse(self.settings.load_raw_mode(raw_path))
+
     def test_sample_counts_survive_reload_without_changing_input_mode(self):
         samples_path = str(Path(self.directory.name) / "ads_samples.cfg")
         with patch.object(self.settings.os, "sync") as sync:
