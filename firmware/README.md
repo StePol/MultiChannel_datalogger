@@ -2,6 +2,13 @@
 
 This directory contains the software running on the Raspberry Pi Pico (RP2040).
 
+## Samostatný návod pre AI
+
+[Podklad pre AI a dlhodobé meranie](../docs/AI_PODKLAD_DATALOGGER.md)
+zhŕňa obsluhu FW 1.0.7-dev, sériové príkazy, režimy ADC, deliče,
+interpretáciu CSV, obmedzenia a plánovanie experimentu. Je samostatný:
+do konverzácie s AI stačí priložiť celý súbor a doplniť údaje merania.
+
 ## Hardware
 - **Microcontroller:** Raspberry Pi Pico
 - **Processor:** RP2040 (dual-core ARM Cortex-M0+)

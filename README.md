@@ -2,6 +2,14 @@
 
 Tento projekt predstavuje robustný amatérsky datalogger postavený na mikrokontroléri Raspberry Pi Pico. Zariadenie monitoruje teplotu, vlhkosť, analógové napätia, binárne vstupy a stav batérie.
 
+## Podklad pre AI a dlhodobé meranie
+
+[Samostatný podklad pre AI](docs/AI_PODKLAD_DATALOGGER.md) obsahuje
+prehľad zariadenia, zapojenie, aktuálne režimy a ovládanie, CSV formáty,
+možnosti prispôsobenia a postup dlhodobého merania pre FW 1.0.7-dev.
+Celý súbor možno stiahnuť a priložiť do novej konverzácie s AI bez
+potreby prístupu ku GitHubu. Súčasťou je šablóna konkrétneho experimentu.
+
 ## 🚀 Kľúčové vlastnosti
 
 - **Meranie prostredia:** SHT4x pre teplotu a relatívnu vlhkosť.
